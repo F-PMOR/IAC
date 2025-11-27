@@ -1,0 +1,46 @@
+#cloud-config
+hostname: test-debian-12
+
+# Configuration du clavier en français (azerty)
+keyboard:
+  layout: fr
+  variant: azerty
+
+# Locale française
+locale: fr_FR.UTF-8
+timezone: Europe/Paris
+
+# # Définir le mot de passe root (méthode simple)
+# chpasswd:
+#   list: |
+#     root:root
+#   expire: false
+
+# Autoriser la connexion SSH root avec mot de passe (optionnel)
+ssh_pwauth: true
+
+# a priori le goupe ansible existe déjà.
+# groups:
+#   - ansible
+users:
+- name: root
+  # Mot de passe en clair (sera hashé par cloud-init)
+  plain_text_passwd: root
+  lock_passwd: false
+  ssh_authorized_keys:
+  - ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOrgZKktOFZxHW0gNQ/nK7ulvXvSkSjFMDX7gRhsZzyXKFSG0O6mGTlxrrTSLY3fxY+0YqQtE4Dk+jGUh5B3DoQ= ssh key for IAC Proxmox PMORRY
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3PGdQz/XFj3s5FzV9HZmQ51qmYGmIhq9tiHmwSmSlo philippe.morry@orange.com zxdd7525
+
+- name: ansible
+  gecos: Ansible IAC user for automation
+  ssh_authorized_keys:
+  - ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBOrgZKktOFZxHW0gNQ/nK7ulvXvSkSjFMDX7gRhsZzyXKFSG0O6mGTlxrrTSLY3fxY+0YqQtE4Dk+jGUh5B3DoQ= ssh key for IAC Proxmox PMORRY
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3PGdQz/XFj3s5FzV9HZmQ51qmYGmIhq9tiHmwSmSlo philippe.morry@orange.com zxdd7525
+  # Mot de passe: "ansible" (hash généré avec: mkpasswd --method=SHA-512)
+  plain_text_passwd: ansible
+  # passwd: $6$rounds=4096$saltsaltsal$YKmM8K.9vzL/h1aMxCvVV9tJX7JQQn1KmT0VqGnrVJ3Qr0fYwqP/9mGnD1J3lL6fL9K1qrK9xvK1dK9qrK9xv
+  lock_passwd: false
+  sudo: ['ALL=(ALL) NOPASSWD:ALL']
+  shell: /bin/bash
+  groups: sudo
+  homedir: /home/ansible

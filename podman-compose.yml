@@ -1,0 +1,28 @@
+version: '3'
+# Utilisation
+# podman-compose build && podman-compose up -d
+# ou 
+# podman-compose up -d --build
+# puis 
+# podman exec -it ansible-workspace /bin/bash
+
+services:
+  iac:
+    build:
+      context: .
+      dockerfile: docker-iac/Dockerfile
+    container_name: ansible-workspace
+    env_file:
+      - .env
+    environment:
+      # La clé SSH peut être passée via cette variable
+      # Utilisation: SSH_PRIVATE_KEY="$(cat ~/.ssh/id_rsa)" podman-compose up -d
+      - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-}
+    volumes:
+      # Monte le répertoire courant dans le conteneur
+      - ./:/ansible/playbooks
+      # Monte les clés SSH publiques uniquement (optionnel)
+      - ./.ssh:/root/.ssh:ro
+    working_dir: /ansible/playbooks
+    stdin_open: true
+    tty: true
