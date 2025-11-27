@@ -11,7 +11,7 @@ services:
     build:
       context: .
       dockerfile: docker-iac/Dockerfile
-    container_name: ansible-workspace
+    container_name: IAC-TFA
     env_file:
       - .env
     environment:
@@ -20,7 +20,8 @@ services:
       - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-}
     volumes:
       # Monte le répertoire courant dans le conteneur
-      - ./:/ansible/playbooks
+      - ./ansible:/ansible/playbooks
+      - ./terraform:/root/terraform
       # Monte les clés SSH publiques uniquement (optionnel)
       - ./.ssh:/root/.ssh:ro
     working_dir: /ansible/playbooks
