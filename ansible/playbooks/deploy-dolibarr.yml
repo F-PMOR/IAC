@@ -1,0 +1,34 @@
+---
+- name: Deploy Dolibarr ERP/CRM
+  hosts: preprod
+  become: true
+  
+  vars:
+    # Les tags Dolibarr sont au format: 20.0.2, 21.0.0, etc
+    # Voir: https://github.com/Dolibarr/dolibarr/tags
+    dolibarr_version: "22.0.3"
+    dolibarr_git_repo: "https://github.com/Dolibarr/dolibarr.git"
+    dolibarr_domain: "dolibarr-prod.local"
+    dolibarr_db_password: "SecurePassword123!"
+    
+  roles:
+    - dolibarr
+
+  # tasks:
+  #   - name: Wait for MySQL to be ready
+  #     community.mysql.mysql_ping:
+  #       login_unix_socket: /var/run/mysqld/mysqld.sock
+  #     register: mysql_ping
+  #     retries: 5
+  #     delay: 10 
+  #     until: mysql_ping.pinged
+      
+        
+  #   - name: Ensure Dolibarr is reachable
+  #     ansible.builtin.uri:
+  #       url: "http://{{ dolibarr_domain }}"
+  #       status_code: 200
+  #     register: result
+  #     retries: 5
+  #     delay: 10
+  #     until: result.status == 200

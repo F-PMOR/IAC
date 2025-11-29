@@ -20,10 +20,11 @@ services:
       - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-}
     volumes:
       # Monte le répertoire courant dans le conteneur
-      - ./ansible:/ansible/playbooks
+      - ./ansible:/root/ansible
       - ./terraform:/root/terraform
-      # Monte les clés SSH publiques uniquement (optionnel)
-      - ./.ssh:/root/.ssh:ro
-    working_dir: /ansible/playbooks
-    stdin_open: true
+      # Monte les clés SSH en lecture/écriture pour Terraform
+      - ./.ssh:/root/.ssh
+      - ./ansible.cfg:/root/ansible.cfg
+    working_dir: /root
+    # stdin_open: true
     tty: true

@@ -1,0 +1,54 @@
+---
+# Prerequisites installation
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - git
+      - apache2
+      - mariadb-server
+      - mariadb-client
+      - python3-pymysql
+      - "php{{ dolibarr_php_version }}"
+      - "php{{ dolibarr_php_version }}-cli"
+      - "php{{ dolibarr_php_version }}-mysql"
+      - "php{{ dolibarr_php_version }}-curl"
+      - "php{{ dolibarr_php_version }}-gd"
+      - "php{{ dolibarr_php_version }}-intl"
+      - "php{{ dolibarr_php_version }}-mbstring"
+      - "php{{ dolibarr_php_version }}-xml"
+      - "php{{ dolibarr_php_version }}-zip"
+      - "php{{ dolibarr_php_version }}-ldap"
+      - "php{{ dolibarr_php_version }}-soap"
+      - "php{{ dolibarr_php_version }}-imap"
+      - libapache2-mod-php
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Enable Apache modules
+  community.general.apache2_module:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - rewrite
+    - headers
+    - ssl
+  notify: Restart Apache
+
+- name: Ensure Apache is started and enabled
+  ansible.builtin.service:
+    name: apache2
+    state: started
+    enabled: yes
+
+- name: Ensure MariaDB is started and enabled
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: yes

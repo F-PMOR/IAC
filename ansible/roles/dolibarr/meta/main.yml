@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  author: IAC Proxmox
+  description: Install and configure Dolibarr ERP/CRM from Git
+  company: ""
+  license: MIT
+  min_ansible_version: "2.9"
+  
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - bullseye
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+
+  galaxy_tags:
+    - dolibarr
+    - erp
+    - crm
+    - web
+    - php
+
+dependencies: []

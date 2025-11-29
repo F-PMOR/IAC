@@ -1,0 +1,66 @@
+---
+# Dolibarr installation from Git
+
+- name: Check if Dolibarr is already installed
+  ansible.builtin.stat:
+    path: "{{ dolibarr_install_dir }}"
+  register: dolibarr_dir
+
+- name: Fix Git ownership issue if directory exists
+  ansible.builtin.command:
+    cmd: git config --global --add safe.directory {{ dolibarr_install_dir }}
+  when: dolibarr_dir.stat.exists
+  changed_when: false
+
+- name: Fix directory ownership for Git operations
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}"
+    owner: root
+    group: root
+    state: directory
+  when: dolibarr_dir.stat.exists
+
+- name: Clone Dolibarr repository
+  ansible.builtin.git:
+    repo: "{{ dolibarr_git_repo }}"
+    dest: "{{ dolibarr_install_dir }}"
+    version: "{{ dolibarr_version }}"
+    force: no
+  when: not dolibarr_dir.stat.exists
+
+- name: Update Dolibarr if already installed
+  ansible.builtin.git:
+    repo: "{{ dolibarr_git_repo }}"
+    dest: "{{ dolibarr_install_dir }}"
+    version: "{{ dolibarr_version }}"
+    force: yes
+  when: dolibarr_dir.stat.exists
+
+- name: Create documents directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_documents_dir }}"
+    state: directory
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0755'
+
+- name: Set ownership on Dolibarr directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}"
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    recurse: yes
+
+- name: Set permissions on htdocs directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}/htdocs"
+    state: directory
+    mode: '0755'
+
+- name: Set permissions on conf directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}/htdocs/conf"
+    state: directory
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0755'

@@ -1,0 +1,32 @@
+---
+# Apache configuration for Dolibarr
+
+- name: Create Apache VirtualHost for Dolibarr
+  ansible.builtin.template:
+    src: dolibarr.conf.j2
+    dest: "/etc/apache2/sites-available/{{ dolibarr_domain }}.conf"
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart Apache
+
+- name: Disable default Apache site
+  ansible.builtin.command:
+    cmd: a2dissite 000-default.conf
+  args:
+    removes: /etc/apache2/sites-enabled/000-default.conf
+  notify: Restart Apache
+
+- name: Enable Dolibarr site
+  ansible.builtin.command:
+    cmd: "a2ensite {{ dolibarr_domain }}.conf"
+  args:
+    creates: "/etc/apache2/sites-enabled/{{ dolibarr_domain }}.conf"
+  notify: Restart Apache
+
+- name: Test Apache configuration
+  ansible.builtin.command:
+    cmd: apache2ctl configtest
+  changed_when: false
+  register: apache_test
+  failed_when: apache_test.rc != 0

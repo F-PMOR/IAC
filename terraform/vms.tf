@@ -2,35 +2,35 @@
 locals {
   vms = {
     web01 = {
-      name        = "web01"
-      description = "Web server 01"
+      name        = "dolibarr-prod01",
+      description = "Dolibarr Production Web server 01"
       cores       = 2
       memory      = 2048
       ip          = "192.168.1.101"
       mac         = "BC:24:11:44:BF:01"
-      tags        = ["terraform", "web", "debian"]
-      groups      = ["webservers"]
+      tags        = ["terraform", "prod","web", "debian"]
+      groups      = ["prod"]
     }
     web02 = {
-      name        = "web02"
-      description = "Web server 02"
+      name        = "dolibarr-preprod01"
+      description = "Dolibarr Pre-Production Web server 01"
       cores       = 2
       memory      = 2048
-      ip          = "192.168.1.102"
-      mac         = "BC:24:11:44:BF:02"
-      tags        = ["terraform", "web", "debian"]
-      groups      = ["webservers"]
+      ip          = "192.168.1.111"
+      mac         = "BC:24:11:44:BF:12"
+      tags        = ["terraform", "preprod","web", "debian"]
+      groups      = ["preprod"]
     }
-    db01 = {
-      name        = "db01"
-      description = "Database server"
-      cores       = 4
-      memory      = 4096
-      ip          = "192.168.1.110"
-      mac         = "BC:24:11:44:BF:10"
-      tags        = ["terraform", "database", "debian"]
-      groups      = ["databases"]
-    }
+    # db01 = {
+    #   name        = "db01"
+    #   description = "Database server"
+    #   cores       = 4
+    #   memory      = 4096
+    #   ip          = "192.168.1.110"
+    #   mac         = "BC:24:11:44:BF:10"
+    #   tags        = ["terraform", "database", "debian"]
+    #   groups      = ["databases"]
+    # }
   }
 }
 

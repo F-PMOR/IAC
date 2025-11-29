@@ -1,5 +1,4 @@
 # Inventaire Ansible généré automatiquement par Terraform
-# Date de génération: ${timestamp()}
 # Ne pas modifier manuellement - ce fichier sera écrasé
 
 # Groupes par type de serveur

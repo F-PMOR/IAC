@@ -22,4 +22,4 @@ RUN echo '[ -f /ansible/playbooks/.bash_aliases ] && source /ansible/playbooks/.
 WORKDIR /ansible/playbooks
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["tail", "-f", "/dev/null"]
+CMD ["/bin/bash"]

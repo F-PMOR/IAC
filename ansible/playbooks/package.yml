@@ -4,31 +4,57 @@
   become: true
   
   vars:
-    package_list:
-      - 
+    dolibarr_version: "22.0.3"
+    dolibarr_full_version: "dolibarr_22.0.3-4_all.deb"
 
   tasks:
-    - name: Update apt cache (Debian/Ubuntu)
-      ansible.builtin.apt:
-        update_cache: yes
-        cache_valid_time: 3600
-      when: ansible_os_family == "Debian"
-    
-    - name: Update yum cache (RedHat/CentOS)
-      ansible.builtin.yum:
-        update_cache: yes
-      when: ansible_os_family == "RedHat"
-    
-    - name: Check if reboot is required (Debian/Ubuntu)
-      ansible.builtin.stat:
-        path: /var/run/reboot-required
-      register: reboot_required
-      when: ansible_os_family == "Debian"
-    
-    - name: Reboot if required
-      ansible.builtin.reboot:
-        msg: "Reboot initiated by Ansible after system update"
-        reboot_timeout: 300
-      when: 
-        - ansible_os_family == "Debian"
-        - reboot_required.stat.exists
+    - name: "Download dolibarr 'dolideb' version {{dolibarr_version }}"
+      ansible.builtin.get_url:
+        url: "https://sourceforge.net/projects/dolibarr/files/Dolibarr%20installer%20for%20Debian-Ubuntu%20%28DoliDeb%29/{{dolibarr_version}}/{{dolibarr_full_version}}/download"
+        dest: "/tmp/{{dolibarr_full_version}}"
+        mode: '0644'
+        force: false
+      register: download_result
+
+    - name: "Fix broken packages and install dependencies"
+      ansible.builtin.command: apt-get install /tmp/{{dolibarr_full_version}} -f -y
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+        DEBCONF_NONINTERACTIVE_SEEN: "true"
+
+
+    # - name: "Fix broken dependencies before installation"
+    #   ansible.builtin.apt:
+    #     state: fixed
+
+    # - name: "Install dolibarr 'dolideb' package {{dolibarr_version }}"
+    #   ansible.builtin.apt:
+    #     deb: /tmp/{{dolibarr_full_version}}
+    #     state: present
+    #     install_recommends: true
+    #   notify:
+    #     - Restart Apache
+    #   ignore_errors: true
+    #   register: install_result
+
+    # - name: "Fix dependencies if installation failed"
+    #   ansible.builtin.apt:
+    #     state: fixed
+    #   when: install_result.failed
+
+    # - name: "Retry installation after fix"
+    #   ansible.builtin.apt:
+    #     deb: /tmp/{{dolibarr_full_version}}
+    #     state: present
+    #   when: install_result.failed
+    #   notify:
+    #     - Restart Apache
+
+  handlers:
+    - name: Restart Apache
+      ansible.builtin.service:
+        name: apache2
+        state: restarted  
+
+
+        
