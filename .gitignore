@@ -1,0 +1,7 @@
+# Ignorer les fichiers de backup dans le répertoire files/
+ansible/playbooks/files/*.sql
+ansible/playbooks/files/*.sql.gz
+ansible/playbooks/files/*.sql.bz2
+ansible/playbooks/files/*.tar.gz
+ansible/playbooks/files/*.tar.bz2
+ansible/playbooks/files/*.zip

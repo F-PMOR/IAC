@@ -1,0 +1,30 @@
+---
+# Tâche pour exécuter les playbooks d'une VM spécifique
+
+- name: "Display playbooks for {{ vm.name }}"
+  ansible.builtin.debug:
+    msg: "Executing {{ vm.playbooks | length }} playbook(s) for {{ vm.name }}"
+
+- name: "Execute playbooks for {{ vm.name }}"
+  ansible.builtin.command:
+    cmd: >
+      ansible-playbook 
+      -i inventory/proxmox/inventory.ini 
+      playbooks/{{ playbook.name }}
+      --limit {{ vm.name }}
+      {% if playbook.vars is defined %}
+      {% for key, value in playbook.vars.items() %}
+      -e "{{ key }}={{ value }}"
+      {% endfor %}
+      {% endif %}
+    chdir: ../ansible
+  loop: "{{ vm.playbooks }}"
+  loop_control:
+    loop_var: playbook
+  when: playbook.when is not defined or playbook.when | bool
+  register: playbook_results
+
+- name: "Display results for {{ vm.name }}"
+  ansible.builtin.debug:
+    msg: "Playbooks executed successfully for {{ vm.name }}"
+  when: playbook_results is success

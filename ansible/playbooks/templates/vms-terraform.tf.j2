@@ -1,0 +1,64 @@
+# Terraform configuration generated from vms-config.yml
+# DO NOT EDIT MANUALLY - This file is auto-generated
+
+{% for vm in vms %}
+# ==========================================
+# {{ vm.name }} - {{ vm.description }}
+# ==========================================
+resource "proxmox_virtual_environment_vm" "{{ vm.name | replace('-', '_') }}" {
+  depends_on = [
+    proxmox_virtual_environment_file.user_config,
+    proxmox_virtual_environment_file.vendor_config
+  ]
+
+  name        = "{{ vm.name }}"
+  description = "{{ vm.description }}"
+  tags        = {{ vm.tags | to_json }}
+  node_name   = "{{ vm.node | default(global.proxmox_node) }}"
+
+  cpu {
+    cores = {{ vm.cores }}
+  }
+
+  memory {
+    dedicated = {{ vm.memory }}
+    floating  = {{ vm.memory }}
+  }
+
+  disk {
+    datastore_id = "{{ global.proxmox_datastore }}"
+    file_id      = proxmox_virtual_environment_download_file.debian_12.id
+    interface    = "virtio0"
+    size         = {{ vm.disk_size | default(20) }}
+    iothread     = true
+    discard      = "on"
+    ssd          = true
+  }
+
+  network_device {
+    bridge      = "{{ global.network_bridge }}"
+    model       = "{{ global.network_model }}"
+    mac_address = "{{ vm.mac }}"
+  }
+
+  operating_system {
+    type = "l26"
+  }
+
+  agent {
+    enabled = true
+  }
+
+  initialization {
+    ip_config {
+      ipv4 {
+        address = "{{ vm.ip }}/24"
+        gateway = "{{ vm.gateway }}"
+      }
+    }
+    user_data_file_id   = proxmox_virtual_environment_file.user_config.id
+    vendor_data_file_id = proxmox_virtual_environment_file.vendor_config.id
+  }
+}
+
+{% endfor %}

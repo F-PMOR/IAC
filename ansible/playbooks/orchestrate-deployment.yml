@@ -1,0 +1,68 @@
+---
+# Orchestrateur principal - Déploiement complet automatisé
+# Ce playbook lit la configuration centralisée et déploie tout automatiquement
+
+- name: Load VM configuration
+  hosts: localhost
+  gather_facts: false
+  
+  vars_files:
+    - ../config/vms-config.yml
+  
+  tasks:
+    - name: Display VMs to be deployed
+      ansible.builtin.debug:
+        msg: "Will deploy {{ vms | length }} VMs: {{ vms | map(attribute='name') | list }}"
+    
+    - name: Create Terraform configuration from template
+      ansible.builtin.template:
+        src: templates/vms-terraform.tf.j2
+        dest: ../terraform/vms-from-config.tf
+      delegate_to: localhost
+
+- name: Deploy VMs with Terraform
+  hosts: localhost
+  gather_facts: false
+  
+  tasks:
+    - name: Initialize Terraform
+      ansible.builtin.command:
+        cmd: tofu init
+        chdir: ../terraform
+      register: tf_init
+      changed_when: "'Terraform has been successfully initialized' in tf_init.stdout"
+    
+    - name: Plan Terraform deployment
+      ansible.builtin.command:
+        cmd: tofu plan -out=tfplan
+        chdir: ../terraform
+      register: tf_plan
+      changed_when: true
+    
+    - name: Apply Terraform plan
+      ansible.builtin.command:
+        cmd: tofu apply -auto-approve tfplan
+        chdir: ../terraform
+      register: tf_apply
+      changed_when: true
+      when: auto_apply | default(false)
+    
+    - name: Wait for VMs to be ready
+      ansible.builtin.pause:
+        seconds: 30
+      when: tf_apply is changed
+
+- name: Configure VMs with Ansible
+  hosts: localhost
+  gather_facts: false
+  
+  vars_files:
+    - ../config/vms-config.yml
+  
+  tasks:
+    - name: Execute playbooks for each VM
+      ansible.builtin.include_tasks: tasks/execute-vm-playbooks.yml
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+      when: vm.playbooks is defined

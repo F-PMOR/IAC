@@ -22,6 +22,7 @@ services:
       # Monte le répertoire courant dans le conteneur
       - ./ansible:/root/ansible
       - ./terraform:/root/terraform
+      - ./config:/root/config
       # Monte les clés SSH en lecture/écriture pour Terraform
       - ./.ssh:/root/.ssh
       - ./ansible.cfg:/root/ansible.cfg

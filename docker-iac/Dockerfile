@@ -16,8 +16,11 @@ RUN wget --secure-protocol=TLSv1_2 --https-only \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# Configuration pour charger les alias
-RUN echo '[ -f /ansible/playbooks/.bash_aliases ] && source /ansible/playbooks/.bash_aliases' >> /root/.bashrc
+# Copier les alias dans le conteneur
+COPY .bash_aliases /root/.bash_aliases
+
+# Charger les alias dans bashrc
+RUN echo 'if [ -f ~/.bash_aliases ]; then . ~/.bash_aliases; fi' >> /root/.bashrc
 
 WORKDIR /ansible/playbooks
 
