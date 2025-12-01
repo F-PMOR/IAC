@@ -2,47 +2,120 @@
 # Orchestrateur principal - Déploiement complet automatisé
 # Ce playbook lit la configuration centralisée et déploie tout automatiquement
 
+- name: Generate configuration from CSV
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  
+  vars:
+    project_root: "/root"
+    config_dir: "{{ project_root }}/config"
+    terraform_dir: "{{ project_root }}/terraform"
+    ansible_dir: "{{ project_root }}/ansible"
+  
+  tasks:
+    - name: Check if CSV file exists
+      ansible.builtin.stat:
+        path: "{{ config_dir }}/vms.csv"
+      register: csv_file
+    
+    - name: Convert CSV to YAML configuration
+      ansible.builtin.command:
+        cmd: python3 csv-to-config.py
+        chdir: "{{ config_dir }}"
+      when: csv_file.stat.exists
+      changed_when: true
+    
+    - name: Check if config file was generated
+      ansible.builtin.stat:
+        path: "{{ config_dir }}/vms-config.yml"
+      register: config_file
+      failed_when: not config_file.stat.exists
+
 - name: Load VM configuration
   hosts: localhost
   gather_facts: false
   
+  vars:
+    project_root: "/root"
+    config_dir: "{{ project_root }}/config"
+  
   vars_files:
-    - ../config/vms-config.yml
+    - "{{ config_dir }}/vms-config.yml"
   
   tasks:
     - name: Display VMs to be deployed
       ansible.builtin.debug:
         msg: "Will deploy {{ vms | length }} VMs: {{ vms | map(attribute='name') | list }}"
     
+    - name: Display configuration
+      ansible.builtin.debug:
+        msg:
+          - "Environment: {{ item.environment }}"
+          - "VM: {{ item.name }} ({{ item.cores }} cores, {{ item.memory }}MB)"
+          - "Node: {{ item.node }}"
+          - "IP: {{ item.ip }}"
+          - "Playbooks: {{ item.playbooks | default([]) | map(attribute='name') | list }}"
+      loop: "{{ vms }}"
+      loop_control:
+        label: "{{ item.name }}"
+
+- name: Generate Terraform configuration
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    project_root: "/root"
+    config_dir: "{{ project_root }}/config"
+    terraform_dir: "{{ project_root }}/terraform"
+    ansible_dir: "{{ project_root }}/ansible"
+  
+  vars_files:
+    - "{{ config_dir }}/vms-config.yml"
+  
+  tasks:
     - name: Create Terraform configuration from template
       ansible.builtin.template:
-        src: templates/vms-terraform.tf.j2
-        dest: ../terraform/vms-from-config.tf
+        src: "{{ ansible_dir }}/playbooks/templates/vms-terraform.tf.j2"
+        dest: "{{ terraform_dir }}/vms-from-config.tf"
       delegate_to: localhost
+    
+    - name: Display Terraform file location
+      ansible.builtin.debug:
+        msg: "Terraform configuration generated: {{ terraform_dir }}/vms-from-config.tf"
 
 - name: Deploy VMs with Terraform
   hosts: localhost
   gather_facts: false
   
+  vars:
+    project_root: "/root"
+    terraform_dir: "{{ project_root }}/terraform"
+  
   tasks:
     - name: Initialize Terraform
       ansible.builtin.command:
         cmd: tofu init
-        chdir: ../terraform
+        chdir: "{{ terraform_dir }}"
       register: tf_init
       changed_when: "'Terraform has been successfully initialized' in tf_init.stdout"
     
     - name: Plan Terraform deployment
       ansible.builtin.command:
         cmd: tofu plan -out=tfplan
-        chdir: ../terraform
+        chdir: "{{ terraform_dir }}"
       register: tf_plan
       changed_when: true
+    
+    - name: Display plan summary
+      ansible.builtin.debug:
+        msg: "Terraform plan created. Review and apply with auto_apply=true"
+      when: not (auto_apply | default(false))
     
     - name: Apply Terraform plan
       ansible.builtin.command:
         cmd: tofu apply -auto-approve tfplan
-        chdir: ../terraform
+        chdir: "{{ terraform_dir }}"
       register: tf_apply
       changed_when: true
       when: auto_apply | default(false)
@@ -50,19 +123,41 @@
     - name: Wait for VMs to be ready
       ansible.builtin.pause:
         seconds: 30
-      when: tf_apply is changed
+        prompt: "Waiting for VMs to boot and cloud-init to complete..."
+      when: 
+        - auto_apply | default(false)
+        - tf_apply is changed
 
 - name: Configure VMs with Ansible
   hosts: localhost
   gather_facts: false
   
+  vars:
+    project_root: "/root"
+    config_dir: "{{ project_root }}/config"
+    ansible_dir: "{{ project_root }}/ansible"
+  
   vars_files:
-    - ../config/vms-config.yml
+    - "{{ config_dir }}/vms-config.yml"
   
   tasks:
+    - name: Refresh inventory
+      ansible.builtin.meta: refresh_inventory
+    
     - name: Execute playbooks for each VM
-      ansible.builtin.include_tasks: tasks/execute-vm-playbooks.yml
+      ansible.builtin.include_tasks: "{{ ansible_dir }}/playbooks/tasks/execute-vm-playbooks.yml"
       loop: "{{ vms }}"
       loop_control:
         loop_var: vm
-      when: vm.playbooks is defined
+        label: "{{ vm.name }}"
+      when: 
+        - vm.playbooks is defined
+        - auto_apply | default(false)
+    
+    - name: Display next steps
+      ansible.builtin.debug:
+        msg:
+          - "=== Deployment Summary ==="
+          - "VMs deployed: {{ vms | length }}"
+          - "To configure VMs, run: ansible-playbook {{ ansible_dir }}/playbooks/orchestrate-deployment.yml -e auto_apply=true"
+      when: not (auto_apply | default(false))

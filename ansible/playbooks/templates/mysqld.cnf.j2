@@ -1,0 +1,59 @@
+#
+# MariaDB Server Configuration
+# Managed by Ansible - DO NOT EDIT MANUALLY
+#
+
+[mysqld]
+
+# Basic Settings
+user                    = mysql
+pid-file                = /run/mysqld/mysqld.pid
+socket                  = /run/mysqld/mysqld.sock
+port                    = {{ mysql_port }}
+basedir                 = /usr
+datadir                 = /var/lib/mysql
+tmpdir                  = /tmp
+lc-messages-dir         = /usr/share/mysql
+
+# Network
+bind-address            = {{ mysql_bind_address }}
+max_connections         = {{ mysql_max_connections }}
+connect_timeout         = 5
+wait_timeout            = 600
+max_allowed_packet      = 64M
+thread_cache_size       = 128
+sort_buffer_size        = 4M
+bulk_insert_buffer_size = 16M
+tmp_table_size          = 32M
+max_heap_table_size     = 32M
+
+# InnoDB Settings
+innodb_buffer_pool_size = {{ mysql_innodb_buffer_pool_size }}
+innodb_log_file_size    = 256M
+innodb_log_buffer_size  = 8M
+innodb_file_per_table   = 1
+innodb_flush_method     = O_DIRECT
+innodb_flush_log_at_trx_commit = 2
+
+# Character Set
+character-set-server    = utf8mb4
+collation-server        = utf8mb4_general_ci
+
+# Logging
+log_error               = /var/log/mysql/error.log
+slow_query_log          = 1
+slow_query_log_file     = /var/log/mysql/slow.log
+long_query_time         = 2
+
+# Query Cache (disabled by default in MariaDB 10.5+)
+# query_cache_limit      = 1M
+# query_cache_size       = 16M
+
+# Binary Logging (for replication)
+# log_bin                = /var/log/mysql/mysql-bin.log
+# expire_logs_days       = 10
+# max_binlog_size        = 100M
+
+# Security
+# skip-networking
+# skip-name-resolve

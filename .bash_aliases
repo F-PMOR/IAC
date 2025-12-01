@@ -70,3 +70,10 @@ alias tfr='tofu refresh'
 alias tfw='tofu workspace'
 alias tfwl='tofu workspace list'
 alias tfws='tofu workspace select'
+
+# Configuration et orchestration
+alias csv2yaml='python3 /root/config/csv-to-config.py'
+alias generate-config='python3 /root/config/csv-to-config.py'
+alias orchestrate='ansible-playbook /root/ansible/playbooks/orchestrate-deployment.yml'
+alias orchestrate-apply='ansible-playbook /root/ansible/playbooks/orchestrate-deployment.yml -e auto_apply=true'
+alias deploy-vms='orchestrate-apply'

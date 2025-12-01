@@ -5,25 +5,62 @@
 # Configuration des VMs depuis CSV
 locals {
   vms_from_csv = {
-{% for vm in vms %}
-    {{ vm.name | replace('-', '_') }} = {
-      name        = "{{ vm.name }}"
-      description = "{{ vm.description }}"
-      node        = "{{ vm.node }}"
-      cores       = {{ vm.cores }}
-      memory      = {{ vm.memory }}
-      disk_size   = {{ vm.disk_size }}
-      ip          = "{{ vm.ip }}"
-      gateway     = "{{ vm.gateway }}"
-      mac         = "{{ vm.mac }}"
-      tags        = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
-      groups      = [{% for group in vm.ansible_groups %}"{{ group }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+    dolibarr_prod01 = {
+      name        = "dolibarr-prod01"
+      description = "Dolibarr Production - Serveur principal"
+      node        = "pve01"
+      cores       = 2
+      memory      = 4096
+      disk_size   = 50
+      ip          = "192.168.1.101"
+      gateway     = "192.168.1.1"
+      mac         = "BC:24:11:44:BF:01"
+      tags        = ["terraform", "prod", "web", "erp", "debian"]
+      groups      = ["prod", "webservers", "dolibarr"]
     }
-{% endfor %}
+    dolibarr_preprod01 = {
+      name        = "dolibarr-preprod01"
+      description = "Dolibarr Pre-Production - Tests"
+      node        = "pve01"
+      cores       = 2
+      memory      = 2048
+      disk_size   = 30
+      ip          = "192.168.1.111"
+      gateway     = "192.168.1.1"
+      mac         = "BC:24:11:44:BF:11"
+      tags        = ["terraform", "preprod", "web", "erp", "debian"]
+      groups      = ["preprod", "webservers", "dolibarr"]
+    }
+    dolibarr_dev01 = {
+      name        = "dolibarr-dev01"
+      description = "Dolibarr Développement"
+      node        = "pve02"
+      cores       = 2
+      memory      = 2048
+      disk_size   = 30
+      ip          = "192.168.1.121"
+      gateway     = "192.168.1.1"
+      mac         = "BC:24:11:44:BF:21"
+      tags        = ["terraform", "dev", "web", "debian"]
+      groups      = ["dev", "webservers", "dolibarr"]
+    }
+    mysql_prod01 = {
+      name        = "mysql-prod01"
+      description = "MySQL/MariaDB Production"
+      node        = "pve01"
+      cores       = 4
+      memory      = 8192
+      disk_size   = 100
+      ip          = "192.168.1.100"
+      gateway     = "192.168.1.1"
+      mac         = "BC:24:11:44:BF:10"
+      tags        = ["terraform", "prod", "database", "debian"]
+      groups      = ["prod", "databases"]
+    }
   }
   
   # Liste des nodes uniques utilisés
-  unique_nodes = toset([{% for vm in vms %}"{{ vm.node }}"{% if not loop.last %}, {% endif %}{% endfor %}])
+  unique_nodes = toset(["pve01", "pve01", "pve02", "pve01"])
 }
 
 # Télécharger l'image Debian sur chaque node utilisé

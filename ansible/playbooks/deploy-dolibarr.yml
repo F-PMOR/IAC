@@ -12,7 +12,7 @@
     dolibarr_db_password: "SecurePassword123!"
     
   roles:
-    - dolibarr
+    - role: dolibarr
 
 # Supprimer et recréer la base de données proprement
 # sudo mysql -e "DROP DATABASE IF EXISTS dolibarr;"
