@@ -1,5 +1,10 @@
 #cloud-config
-hostname: test-debian-12
+# Configuration cloud-init pour les VMs
+# Ce fichier est utilisé par Terraform pour initialiser les VMs
+
+# Hostname de la machine (défini dynamiquement par Terraform)
+hostname: ${hostname}
+fqdn: ${hostname}.local
 
 # Configuration du clavier en français (azerty)
 keyboard:

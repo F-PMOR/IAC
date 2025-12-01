@@ -22,34 +22,6 @@
         DEBIAN_FRONTEND: noninteractive
         DEBCONF_NONINTERACTIVE_SEEN: "true"
 
-
-    # - name: "Fix broken dependencies before installation"
-    #   ansible.builtin.apt:
-    #     state: fixed
-
-    # - name: "Install dolibarr 'dolideb' package {{dolibarr_version }}"
-    #   ansible.builtin.apt:
-    #     deb: /tmp/{{dolibarr_full_version}}
-    #     state: present
-    #     install_recommends: true
-    #   notify:
-    #     - Restart Apache
-    #   ignore_errors: true
-    #   register: install_result
-
-    # - name: "Fix dependencies if installation failed"
-    #   ansible.builtin.apt:
-    #     state: fixed
-    #   when: install_result.failed
-
-    # - name: "Retry installation after fix"
-    #   ansible.builtin.apt:
-    #     deb: /tmp/{{dolibarr_full_version}}
-    #     state: present
-    #   when: install_result.failed
-    #   notify:
-    #     - Restart Apache
-
   handlers:
     - name: Restart Apache
       ansible.builtin.service:

@@ -1,6 +1,6 @@
 ---
 - name: Restore Dolibarr database and documents from backup
-  hosts: preprod
+  hosts: dolibarr
   become: true
   
   vars:

@@ -1,6 +1,6 @@
 ---
 - name: Deploy Dolibarr ERP/CRM
-  hosts: preprod
+  hosts: dolibarr
   become: true
   
   vars:

@@ -20,14 +20,15 @@ vms:
   - webservers
   - dolibarr
   playbooks:
-  - name: deploy-dolibarr.yml
+  - name: post-installation.yml
     vars:
       dolibarr_version: 22.0.3
       dolibarr_domain: dolibarr-prod.morry.fr
-  - name: restore-dolibarr-db.yml
+  - name: deploy-dolibarr.yml
     vars:
       backup_file: prod_backup_20251201.sql.gz
       documents_backup_file: prod_documents_20251201.tar.gz
+  - name: restore-dolibarr-db.yml
 - name: dolibarr-preprod01
   environment: preprod
   node: pve01
@@ -49,10 +50,15 @@ vms:
   - webservers
   - dolibarr
   playbooks:
-  - name: deploy-dolibarr.yml
+  - name: post-installation.yml
     vars:
       dolibarr_version: 22.0.3
       dolibarr_domain: dolibarr-preprod.morry.fr
+  - name: deploy-dolibarr.yml
+    vars:
+      backup_file: prod_backup_20251201.sql.gz
+      documents_backup_file: prod_documents_20251201.tar.gz
+  - name: restore-dolibarr-db.yml
 - name: dolibarr-dev01
   environment: dev
   node: pve02
@@ -73,14 +79,15 @@ vms:
   - webservers
   - dolibarr
   playbooks:
-  - name: deploy-dolibarr.yml
+  - name: post-installation.yml
     vars:
       dolibarr_version: 22.0.3
       dolibarr_domain: dolibarr-dev.morry.fr
-  - name: restore-dolibarr-db.yml
+  - name: deploy-dolibarr.yml
     vars:
       backup_file: prod_backup_20251201.sql.gz
       documents_backup_file: prod_documents_20251201.tar.gz
+  - name: restore-dolibarr-db.yml
 - name: mysql-prod01
   environment: prod
   node: pve01
@@ -100,9 +107,10 @@ vms:
   - prod
   - databases
   playbooks:
-  - name: setup-mysql.yml
+  - name: post-installation.yml
     vars:
       mysql_max_connections: '200'
+  - name: setup-mysql.yml
 global:
   proxmox_node: pve01
   proxmox_datastore: local-lvm

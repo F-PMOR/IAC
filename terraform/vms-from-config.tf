@@ -80,15 +80,17 @@ resource "proxmox_virtual_environment_download_file" "debian_12_csv" {
 
 # Créer les fichiers cloud-init sur chaque node
 resource "proxmox_virtual_environment_file" "user_config_csv" {
-  for_each = local.unique_nodes
+  for_each = local.vms_from_csv
   
   content_type  = "snippets"
   datastore_id  = "local"
-  node_name     = each.value
+  node_name     = each.value.node
 
   source_raw {
-    data        = file("cloudinit/user-config.yaml")
-    file_name   = "user-config.yaml"
+    data = templatefile("${path.module}/cloudinit/user-config.yaml", {
+      hostname = each.value.name
+    })
+    file_name   = "user-config-${each.value.name}.yaml"
   }
 }
 
@@ -159,7 +161,7 @@ resource "proxmox_virtual_environment_vm" "vms_csv" {
         gateway = each.value.gateway
       }
     }
-    user_data_file_id   = proxmox_virtual_environment_file.user_config_csv[each.value.node].id
+    user_data_file_id   = proxmox_virtual_environment_file.user_config_csv[each.key].id
     vendor_data_file_id = proxmox_virtual_environment_file.vendor_config_csv[each.value.node].id
   }
 }
