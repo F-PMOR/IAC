@@ -14,6 +14,7 @@ services:
     container_name: IAC-TFA
     env_file:
       - .env
+      - .env.secrets
     environment:
       # La clé SSH peut être passée via cette variable
       # Utilisation: SSH_PRIVATE_KEY="$(cat ~/.ssh/id_rsa)" podman-compose up -d
@@ -23,6 +24,7 @@ services:
       - ./ansible:/root/ansible
       - ./terraform:/root/terraform
       - ./config:/root/config
+      - ./scripts:/root/scripts
       # Monte les clés SSH en lecture/écriture pour Terraform
       - ./.ssh:/root/.ssh
       - ./ansible.cfg:/root/ansible.cfg

@@ -5,3 +5,18 @@ ansible/playbooks/files/*.sql.bz2
 ansible/playbooks/files/*.tar.gz
 ansible/playbooks/files/*.tar.bz2
 ansible/playbooks/files/*.zip
+
+# Secrets et variables d'environnement sensibles
+.env.secrets
+.env.local
+**/*secrets*
+!.env.secrets.example
+
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+terraform/*.tfvars.backup
+terraform/vms-from-config-*.tf

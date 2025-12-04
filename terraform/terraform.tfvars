@@ -1,7 +1,10 @@
 # PVE informations
-pve_endpoint = "https://pve01.home:8006/"
-pve_username = "root@pam"
-pve_password = "ertyuiop"
+# Les credentials (endpoint, username, password) sont lus depuis les variables d'environnement:
+# - PROXMOX_VE_ENDPOINT
+# - PROXMOX_VE_USERNAME  
+# - PROXMOX_VE_PASSWORD
+# Ces variables sont définies dans .env.secrets
+
 pve_node     = "pve01"
 pve_insecure = true
 

@@ -5,12 +5,16 @@ terraform {
             source  = "bpg/proxmox"
             version = "0.64.0"
         }
+        vsphere = {
+            source  = "hashicorp/vsphere"
+            version = "~> 2.6"
+        }
     }
 }
 
 provider "proxmox" {
-    endpoint    = var.pve_endpoint
-    username    = var.pve_username
-    password    = var.pve_password
-    insecure    = var.pve_insecure
+    # Le provider lit automatiquement les variables d'environnement:
+    # PROXMOX_VE_ENDPOINT, PROXMOX_VE_USERNAME, PROXMOX_VE_PASSWORD
+    # Pas besoin de les passer explicitement
+    insecure = var.pve_insecure
 }

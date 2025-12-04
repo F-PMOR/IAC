@@ -28,6 +28,11 @@
     - { regexp: '^post_max_size', line: "post_max_size = {{ dolibarr_php_post_max_size }}" }
   notify: Restart Apache
 
+- name: Check if install.lock exists
+  ansible.builtin.stat:
+    path: "{{ dolibarr_documents_dir }}/install.lock"
+  register: install_lock
+
 - name: Create install.lock file (skip web installer)
   ansible.builtin.file:
     path: "{{ dolibarr_documents_dir }}/install.lock"
@@ -35,4 +40,8 @@
     owner: "{{ dolibarr_web_user }}"
     group: "{{ dolibarr_web_group }}"
     mode: '0644'
-  when: conf_php.stat.exists
+    modification_time: preserve
+    access_time: preserve
+  when: 
+    - conf_php.stat.exists
+    - not install_lock.stat.exists

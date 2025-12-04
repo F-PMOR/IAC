@@ -85,3 +85,14 @@ podman-compose up -d
 - Configuration Ansible dans `ansible.cfg`
 - Bash est installé avec support des alias
 - **OpenTofu (dernière version)** est installé - alternative open-source à Terraform
+
+# Deployment Commands
+## Déploiement standard
+
+deploy-vms
+
+## Déploiement rapide
+deploy-vms-fast
+
+## Personnalisé (7 VMs en parallèle)
+orchestrate -e auto_apply=true -e ansible_parallel=7

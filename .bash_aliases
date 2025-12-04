@@ -76,4 +76,12 @@ alias csv2yaml='python3 /root/config/csv-to-config.py'
 alias generate-config='python3 /root/config/csv-to-config.py'
 alias orchestrate='ansible-playbook /root/ansible/playbooks/orchestrate-deployment.yml'
 alias orchestrate-apply='ansible-playbook /root/ansible/playbooks/orchestrate-deployment.yml -e auto_apply=true'
+alias orchestrate-fast='ansible-playbook /root/ansible/playbooks/orchestrate-deployment.yml -e auto_apply=true -e ansible_parallel=5'
 alias deploy-vms='orchestrate-apply'
+alias deploy-vms-fast='orchestrate-fast'
+
+# Gestion des VMs
+alias list-vms='cd /root/terraform && tofu state list | grep vms_csv'
+alias plan-destroy-vm='/root/terraform/destroy-vms.sh --plan'
+alias destroy-vm='/root/terraform/destroy-vms.sh --vm'
+alias destroy-all-vms='/root/terraform/destroy-vms.sh --all'

@@ -1,0 +1,92 @@
+# Configuration des VMs VMware depuis CSV
+# DO NOT EDIT MANUALLY - This file is auto-generated
+
+{% set vmware_vms = vms | selectattr('provider', 'equalto', 'vmware') | list %}
+{% if vmware_vms | length > 0 %}
+
+# Data sources VMware
+data "vsphere_datacenter" "dc" {
+  name = var.vsphere_datacenter
+}
+
+data "vsphere_datastore" "datastore" {
+  name          = var.vsphere_datastore
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+data "vsphere_network" "network" {
+  name          = var.vsphere_network
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+data "vsphere_virtual_machine" "template" {
+  name          = var.vsphere_template
+  datacenter_id = data.vsphere_datacenter.dc.id
+}
+
+# VMs VMware
+{% for vm in vmware_vms %}
+resource "vsphere_virtual_machine" "{{ vm.name | replace('-', '_') }}" {
+  name             = "{{ vm.name }}"
+  resource_pool_id = data.vsphere_datacenter.dc.id
+  datastore_id     = data.vsphere_datastore.datastore.id
+  
+  num_cpus = {{ vm.cores }}
+  memory   = {{ vm.memory }}
+  
+  guest_id = data.vsphere_virtual_machine.template.guest_id
+  
+  network_interface {
+    network_id   = data.vsphere_network.network.id
+    adapter_type = data.vsphere_virtual_machine.template.network_interface_types[0]
+  }
+  
+  disk {
+    label            = "disk0"
+    size             = {{ vm.disk_size }}
+    thin_provisioned = true
+  }
+  
+  clone {
+    template_uuid = data.vsphere_virtual_machine.template.id
+    
+    customize {
+      linux_options {
+        host_name = "{{ vm.name }}"
+        domain    = "local"
+      }
+      
+      network_interface {
+        ipv4_address = "{{ vm.ip }}"
+        ipv4_netmask = 24
+      }
+      
+      ipv4_gateway = "{{ vm.gateway }}"
+      dns_server_list = ["{{ vm.gateway }}", "8.8.8.8"]
+    }
+  }
+  
+  tags = [{% for tag in vm.tags %}"{{ tag }}"{% if not loop.last %}, {% endif %}{% endfor %}]
+  
+  lifecycle {
+    ignore_changes = [
+      clone[0].customize[0].network_interface,
+      disk[0].io_share_count,
+      disk[0].thin_provisioned,
+    ]
+  }
+}
+
+{% endfor %}
+
+# Outputs VMware
+{% for vm in vmware_vms %}
+output "{{ vm.name | replace('-', '_') }}_ip" {
+  value       = vsphere_virtual_machine.{{ vm.name | replace('-', '_') }}.default_ip_address
+  description = "IP address of {{ vm.name }}"
+}
+{% endfor %}
+
+{% else %}
+# Aucune VM VMware définie dans le CSV
+{% endif %}

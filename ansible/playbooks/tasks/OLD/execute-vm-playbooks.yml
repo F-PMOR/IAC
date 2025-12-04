@@ -1,0 +1,36 @@
+---
+# Tâche pour exécuter les playbooks d'une VM spécifique
+
+- name: Set absolute paths
+  ansible.builtin.set_fact:
+    project_root: "/root"
+    ansible_dir: "/root/ansible"
+
+- name: "Display playbooks for {{ vm.name }}"
+  ansible.builtin.debug:
+    msg: "Executing {{ vm.playbooks | length }} playbook(s) for {{ vm.name }}"
+
+- name: "Execute playbooks for {{ vm.name }}"
+  ansible.builtin.command:
+    cmd: >
+      ansible-playbook 
+      -i {{ ansible_dir }}/inventory/proxmox/inventory.ini 
+      {{ ansible_dir }}/playbooks/{{ playbook.name }}
+      --limit {{ vm.name }}
+      {% if playbook.vars is defined %}
+      {% for key, value in playbook.vars.items() %}
+      -e "{{ key }}={{ value }}"
+      {% endfor %}
+      {% endif %}
+    chdir: "{{ ansible_dir }}"
+  loop: "{{ vm.playbooks }}"
+  loop_control:
+    loop_var: playbook
+    label: "{{ vm.name }} -> {{ playbook.name }}"
+  when: playbook.when is not defined or playbook.when | bool
+  register: playbook_results
+  changed_when: "'changed=0' not in playbook_results.stdout"
+
+- name: "Display results for {{ vm.name }}"
+  ansible.builtin.debug:
+    msg: "All playbooks executed successfully for {{ vm.name }}"

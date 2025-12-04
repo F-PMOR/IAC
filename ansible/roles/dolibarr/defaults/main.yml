@@ -20,8 +20,8 @@ dolibarr_db_host: "localhost"
 dolibarr_db_port: "3306"
 dolibarr_db_name: "dolibarr"
 dolibarr_db_user: "dolibarr"
-dolibarr_db_password: "changeme"
-dolibarr_db_root_password: "root"
+dolibarr_db_password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('changeme') }}"
+dolibarr_db_root_password: "{{ lookup('env', 'MYSQL_ROOT_PASSWORD') | default('root') }}"
 
 # PHP configuration
 dolibarr_php_version: "8.2"

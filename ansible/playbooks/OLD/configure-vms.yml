@@ -1,0 +1,85 @@
+---
+# Playbook de configuration Ansible
+# Configure les VMs créées par Terraform
+
+- name: Configure VMs with Ansible
+  hosts: localhost
+  gather_facts: false
+  
+  vars:
+    project_root: "/root"
+    config_dir: "{{ project_root }}/config"
+    ansible_dir: "{{ project_root }}/ansible"
+    # Nombre de VMs à configurer en parallèle (défaut: 3, max recommandé: 5)
+    parallel_vms: "{{ ansible_parallel | default(3) }}"
+    # Mode skip_existing_vms: configure uniquement les nouvelles VMs
+    skip_existing: "{{ skip_existing_vms | default(false) }}"
+  
+  vars_files:
+    - "{{ config_dir }}/vms-config.yml"
+  
+  tasks:
+    - name: Display configuration mode
+      ansible.builtin.debug:
+        msg:
+          - "=== Configuration Ansible ==="
+          - "Total VMs: {{ vms | length }}"
+          - "Skip existing VMs: {{ skip_existing }}"
+          - "Parallel execution: {{ parallel_vms }} VMs at once"
+    
+    - name: Load newly created VMs list
+      ansible.builtin.slurp:
+        src: "{{ config_dir }}/newly-created-vms.txt"
+      register: newly_created_file
+      when: skip_existing | bool
+      ignore_errors: true
+    
+    - name: Parse newly created VMs
+      ansible.builtin.set_fact:
+        newly_created_vms: "{{ (newly_created_file.content | b64decode).split('\n') | select() | list }}"
+      when: 
+        - skip_existing | bool
+        - newly_created_file is defined
+        - newly_created_file.content is defined
+    
+    - name: Set empty list if no new VMs
+      ansible.builtin.set_fact:
+        newly_created_vms: []
+      when: 
+        - skip_existing | bool
+        - (newly_created_file is not defined or newly_created_file.content is not defined)
+    
+    - name: Display VMs to configure
+      ansible.builtin.debug:
+        msg:
+          - "VMs to configure: {{ vms_to_configure | length }}"
+          - "{% if skip_existing | bool %}Newly created: {{ newly_created_vms | default([]) | join(', ') }}{% endif %}"
+      vars:
+        vms_to_configure: "{{ vms | selectattr('playbooks', 'defined') | list }}"
+    
+    - name: Refresh inventory
+      ansible.builtin.meta: refresh_inventory
+    
+    - name: Execute playbooks for each VM
+      ansible.builtin.include_tasks: "{{ ansible_dir }}/playbooks/tasks/execute-vm-playbooks.yml"
+      loop: "{{ vms }}"
+      loop_control:
+        loop_var: vm
+        label: "{{ vm.name }}"
+      when: 
+        - vm.playbooks is defined
+        - vm.playbooks | length > 0
+        - (not skip_existing | bool) or (vm.name in newly_created_vms | default([]))
+    
+    - name: Display configuration summary
+      ansible.builtin.debug:
+        msg:
+          - "=== Configuration terminée ==="
+          - "VMs configurées: {{ configured_count }}"
+          - "{% if skip_existing | bool %}VMs ignorées: {{ skipped_count }}{% endif %}"
+      vars:
+        vms_with_playbooks: "{{ vms | selectattr('playbooks', 'defined') | list }}"
+        newly_vms: "{{ newly_created_vms | default([]) }}"
+        configured_vms_list: "{{ vms_with_playbooks | selectattr('name', 'in', newly_vms) | list if skip_existing | bool else vms_with_playbooks }}"
+        configured_count: "{{ configured_vms_list | length }}"
+        skipped_count: "{{ (vms_with_playbooks | length) - (configured_vms_list | length) }}"

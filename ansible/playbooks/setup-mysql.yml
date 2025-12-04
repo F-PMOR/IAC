@@ -7,7 +7,7 @@
   become: true
   
   vars:
-    mysql_root_password: "{{ vault_mysql_root_password | default('ChangeMe123!') }}"
+    mysql_root_password: "{{ lookup('env', 'MYSQL_ROOT_PASSWORD') | default('ChangeMe123!') }}"
     mysql_max_connections: 200
     mysql_innodb_buffer_pool_size: "2G"
     mysql_bind_address: "0.0.0.0"
@@ -22,7 +22,7 @@
     # Utilisateurs à créer
     mysql_users:
       - name: dolibarr
-        password: "{{ vault_dolibarr_db_password | default('SecurePassword123!') }}"
+        password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('SecurePassword123!') }}"
         priv: "dolibarr.*:ALL"
         host: "%"
   
@@ -46,13 +46,22 @@
         state: started
         enabled: true
     
-    - name: Set MySQL root password
+    - name: Check if root password is already set
+      ansible.builtin.shell: |
+        mysqladmin -u root -p'{{ mysql_root_password }}' ping
+      register: mysql_root_check
+      changed_when: false
+      failed_when: false
+      no_log: true
+    
+    - name: Set MySQL root password (only if not set)
       community.mysql.mysql_user:
         name: root
         password: "{{ mysql_root_password }}"
         login_unix_socket: /var/run/mysqld/mysqld.sock
         check_implicit_admin: true
         state: present
+      when: mysql_root_check.rc != 0
       no_log: true
     
     - name: Create .my.cnf for root user
@@ -68,15 +77,13 @@
         name: ''
         host_all: true
         state: absent
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
     
     - name: Remove MySQL test database
       community.mysql.mysql_db:
         name: test
         state: absent
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
     
     - name: Configure MySQL server settings
       ansible.builtin.template:
@@ -93,8 +100,7 @@
         encoding: "{{ item.encoding | default('utf8mb4') }}"
         collation: "{{ item.collation | default('utf8mb4_general_ci') }}"
         state: present
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
       loop: "{{ mysql_databases }}"
       when: mysql_databases is defined
     
@@ -105,8 +111,8 @@
         priv: "{{ item.priv }}"
         host: "{{ item.host | default('localhost') }}"
         state: present
-        login_user: root
-        login_password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        column_case_sensitive: false
       loop: "{{ mysql_users }}"
       when: mysql_users is defined
       no_log: true

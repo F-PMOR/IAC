@@ -4,15 +4,13 @@
   become: true
   
   vars:
-    # Les tags Dolibarr sont au format: 20.0.2, 21.0.0, etc
-    # Voir: https://github.com/Dolibarr/dolibarr/tags
-    dolibarr_version: "22.0.2"
-    dolibarr_git_repo: "https://github.com/Dolibarr/dolibarr.git"
-    dolibarr_domain: "dolibarr-prod.local"
-    dolibarr_db_password: "SecurePassword123!"
-    
+    # Variables par défaut (seront écrasées par les variables du CSV si elles existent)
+    # Note: Ne pas redéfinir les variables avec des références circulaires
+    # Les valeurs viennent du CSV via l'inventaire ou des defaults du rôle
+    dolibarr_db_password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('SecurePassword123!') }}"
+  
   roles:
-    - role: dolibarr
+    - role: ../roles/dolibarr
 
 # Supprimer et recréer la base de données proprement
 # sudo mysql -e "DROP DATABASE IF EXISTS dolibarr;"
