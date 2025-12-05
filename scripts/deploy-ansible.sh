@@ -4,10 +4,17 @@
 # Script: deploy-ansible.sh
 # Description: Lance l'orchestrateur Ansible de manière native
 # Usage: ./scripts/deploy-ansible.sh [options]
-# Best usage : 
-#  ./deploy-ansible.sh -l prod -t post-install, mysql  # installe les post-install et mysql sur les VMs de prod
-#  ./deploy-ansible.sh -l dev -t post-install, dolibarr  # installe les post-install et dolibarr sur les VMs de dev
-#  ./deploy-ansible.sh -l dolibarr-dev01 -t post-install, dolibarr  # installe les post-install et dolibarr sur dolibarr-dev01
+#
+# Inventaires disponibles (variable INVENTORY_FILE):
+#  - inventory/proxmox/inventory.ini  (par défaut) : VMs Proxmox uniquement
+#  - inventory/vmware/inventory.ini   : VMs VMware uniquement
+#  - inventory/all/inventory.ini      : Toutes les VMs (Proxmox + VMware)
+#
+# Exemples d'utilisation :
+#  ./deploy-ansible.sh -l prod -t post-install,mysql
+#  ./deploy-ansible.sh -l dev -t dolibarr
+#  INVENTORY_FILE=./ansible/inventory/all/inventory.ini ./deploy-ansible.sh
+#  INVENTORY_FILE=./ansible/inventory/vmware/inventory.ini ./deploy-ansible.sh -l vmware_prod
 ###############################################################################
 
 set -e
@@ -79,7 +86,16 @@ while [[ $# -gt 0 ]]; do
             echo "  $0 --skip-tags post-install           # Tout sauf post-installation"
             echo "  $0 --check                            # Voir ce qui serait changé"
             echo ""
+            echo "Inventaires (via variable INVENTORY_FILE):"
+            echo "  - inventory/proxmox/inventory.ini  (défaut) : VMs Proxmox uniquement"
+            echo "  - inventory/vmware/inventory.ini             : VMs VMware uniquement"
+            echo "  - inventory/all/inventory.ini                : Toutes les VMs"
+            echo ""
+            echo "  Exemple : INVENTORY_FILE=./ansible/inventory/all/inventory.ini $0"
+            echo ""
             echo "Tags disponibles:"
+            echo "  - qemu-agent, agent, proxmox : Installation QEMU Guest Agent (Proxmox)"
+            echo "  - vmware-tools, agent, vmware : Installation VMware Tools (vSphere)"
             echo "  - post-install : Post-installation système"
             echo "  - mysql, databases : Configuration MySQL/MariaDB"
             echo "  - dolibarr, web : Déploiement Dolibarr"
@@ -92,6 +108,15 @@ while [[ $# -gt 0 ]]; do
             echo "  - databases : Serveurs de bases de données"
             echo "  - webservers : Serveurs web"
             echo "  - dolibarr : Serveurs Dolibarr"
+            echo ""
+            echo "Groupes disponibles (dépendent de l'inventaire utilisé):"
+            echo "  Inventaire Proxmox/VMware :"
+            echo "    - all, prod, preprod, dev, databases, webservers, dolibarr"
+            echo ""
+            echo "  Inventaire global (all) :"
+            echo "    - proxmox, vmware          : Tous les hosts d'un provider"
+            echo "    - proxmox_prod, vmware_prod : Par environnement et provider"
+            echo "    - prod, dev, databases     : Tous providers confondus"
             exit 0
             ;;
         *)

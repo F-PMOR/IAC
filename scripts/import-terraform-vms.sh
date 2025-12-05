@@ -72,6 +72,45 @@ if [ ! -f "$PROJECT_ROOT/config/vms.csv" ]; then
     exit 1
 fi
 
+# Étape 1: Générer la configuration Terraform si nécessaire
+echo -e "${BLUE}📋 Vérification de la configuration Terraform...${NC}"
+if [ ! -f "$PROJECT_ROOT/terraform/vms-proxmox.tf" ]; then
+    echo -e "${YELLOW}⚠️  Configuration Terraform non trouvée, génération en cours...${NC}"
+    
+    # Appeler le script de déploiement en mode plan-only pour générer les fichiers
+    if [ -f "$SCRIPT_DIR/deploy-terraform.sh" ]; then
+        echo -e "${BLUE}   Exécution de deploy-terraform.sh --plan-only...${NC}"
+        bash "$SCRIPT_DIR/deploy-terraform.sh" --plan-only
+        
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}❌ Échec de la génération de la configuration Terraform${NC}"
+            exit 1
+        fi
+        
+        echo -e "${GREEN}✅ Configuration Terraform générée${NC}"
+    else
+        echo -e "${RED}❌ Script deploy-terraform.sh introuvable${NC}"
+        echo -e "${YELLOW}💡 Essayez de générer manuellement: cd scripts && ./deploy-terraform.sh --plan-only${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✅ Configuration Terraform trouvée${NC}"
+fi
+
+# Étape 2: Initialiser Terraform si nécessaire
+if [ ! -d "$PROJECT_ROOT/terraform/.terraform" ]; then
+    echo -e "${BLUE}🔧 Initialisation de Terraform...${NC}"
+    cd "$PROJECT_ROOT/terraform"
+    tofu init
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Échec de l'initialisation Terraform${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}✅ Terraform initialisé${NC}"
+fi
+
+echo ""
+
 # Fonction pour importer une VM
 import_vm() {
     local vm_name=$1
@@ -86,18 +125,29 @@ import_vm() {
     
     echo -e "${BLUE}📥 Import de $vm_name (ID: $vmid sur $node)...${NC}"
     
+    # Convertir les tirets en underscores pour Terraform (compatibilité avec les clés du map)
+    local vm_key=$(echo "$vm_name" | tr '-' '_')
+    
     # Vérifier si la VM existe déjà dans l'état
-    local state_check=$(cd /root/terraform && tofu state list 2>/dev/null | grep -c "proxmox_virtual_environment_vm.vms_csv\[\"$vm_name\"\]" || true)
+    local state_check=$(cd /root/terraform && tofu state list 2>/dev/null | grep -c "proxmox_virtual_environment_vm.vms_csv\[\"$vm_key\"\]" || true)
     
     if [ "$state_check" -gt 0 ]; then
         echo -e "${YELLOW}⚠️  VM $vm_name déjà présente dans l'état Terraform${NC}"
         return 0
     fi
     
-    # Importer la VM
+    # Importer la VM avec timeout de 30 secondes
+    echo -e "${BLUE}   Connexion à l'API Proxmox pour import...${NC}"
     local import_result=$(cd /root/terraform && \
-        tofu import "proxmox_virtual_environment_vm.vms_csv[\"$vm_name\"]" $node/$vmid 2>&1
+        timeout 30 tofu import "proxmox_virtual_environment_vm.vms_csv[\"$vm_key\"]" $node/$vmid 2>&1
     )
+    local import_exit_code=$?
+    
+    if [ $import_exit_code -eq 124 ]; then
+        echo -e "${RED}❌ Timeout lors de l'import de $vm_name (>30s)${NC}"
+        echo -e "${YELLOW}💡 Vérifiez la connectivité réseau vers Proxmox${NC}"
+        return 1
+    fi
     
     if echo "$import_result" | grep -q "Import successful"; then
         echo -e "${GREEN}✅ VM $vm_name importée avec succès${NC}"
