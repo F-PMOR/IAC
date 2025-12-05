@@ -139,11 +139,12 @@ Voir `ansible/playbooks/README-GUEST-AGENTS.md` pour plus de détails.
 
 ## 📚 Documentation
 
-- **[README-OPERATIONS.md](README-OPERATIONS.md)** : Guide d'exploitation complet
-- **[config/README-CSV-PROVIDERS.md](config/README-CSV-PROVIDERS.md)** : Structure des fichiers CSV
-- **[MIGRATION-CSV-PROVIDERS.md](MIGRATION-CSV-PROVIDERS.md)** : Guide de migration
-- **[ansible/playbooks/README-GUEST-AGENTS.md](ansible/playbooks/README-GUEST-AGENTS.md)** : Guest agents
-- **[terraform/README.md](terraform/README.md)** : Organisation Terraform
+- **[docs/GUIDE-OPERATIONS.md](docs/GUIDE-OPERATIONS.md)** : Guide d'exploitation et opérations courantes
+- **[config/README-CSV-PROVIDERS.md](config/README-CSV-PROVIDERS.md)** : Structure et utilisation des fichiers CSV
+- **[docs/INVENTAIRES-ANSIBLE.md](docs/INVENTAIRES-ANSIBLE.md)** : Génération automatique des inventaires
+- **[docs/SCHEMA-INVENTAIRES.md](docs/SCHEMA-INVENTAIRES.md)** : Schéma du flux de génération
+- **[ansible/playbooks/README-GUEST-AGENTS.md](ansible/playbooks/README-GUEST-AGENTS.md)** : Installation des guest agents
+- **[terraform/README.md](terraform/README.md)** : Organisation des fichiers Terraform
 
 ## 🐳 Utilisation du conteneur
 

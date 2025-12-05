@@ -1,240 +1,268 @@
 # Scripts de déploiement
 
-Cette infrastructure utilise une approche modulaire avec séparation entre Terraform et Ansible.
+Infrastructure as Code avec Terraform/OpenTofu et Ansible.
 
 ## Architecture
 
 ```
 scripts/
 ├── deploy-infrastructure.sh  # Script orchestrateur principal
-├── deploy-terraform.sh       # Création VMs (Terraform)
-└── deploy-ansible.sh         # Configuration VMs (Ansible)
+├── deploy-terraform.sh       # Création VMs (Terraform) - Lecture directe CSV
+├── deploy-ansible.sh         # Configuration VMs (Ansible)
+└── check-guest-agents.sh     # Vérification des guest agents
 ```
 
 ## Workflow
 
-1. **CSV → YAML** : Conversion de la configuration centralisée
-2. **YAML → Terraform** : Génération des fichiers `.tf` via templates Jinja2
-3. **Terraform** : Création/mise à jour des VMs sur Proxmox
-4. **Ansible** : Configuration des VMs (système, applications, etc.)
+1. **Configuration** : Éditer les fichiers CSV (`config/vms-proxmox.csv`, `config/vms-vmware.csv`)
+2. **Terraform** : Lecture directe des CSV avec `csvdecode()`, aucune génération Python
+3. **Création VMs** : Déploiement sur Proxmox et/ou VMware
+4. **Génération inventaires** : Terraform génère automatiquement 3 inventaires Ansible :
+   - `ansible/inventory/proxmox/` - VMs Proxmox uniquement
+   - `ansible/inventory/vmware/` - VMs VMware uniquement
+   - `ansible/inventory/all/` - Toutes les VMs avec groupes préfixés
+5. **Ansible** : Configuration des VMs via les inventaires générés
 
 ## Usage
 
-### Déploiement complet (recommandé)
+### Déploiement complet
 
 ```bash
 # Déployer toute l'infrastructure (VMs + configuration)
-/root/scripts/deploy-infrastructure.sh
+./deploy-infrastructure.sh
 
-# Déployer uniquement les nouvelles VMs
-/root/scripts/deploy-infrastructure.sh --skip-existing
+# Vérifier le plan avant déploiement
+./deploy-infrastructure.sh --plan-only
+
+# Déployer uniquement Terraform
+./deploy-infrastructure.sh --terraform-only
+
+# Déployer uniquement Ansible
+./deploy-infrastructure.sh --ansible-only
 ```
 
-### Déploiement par étape
-
-```bash
-# 1. Plan Terraform uniquement (vérification)
-/root/scripts/deploy-infrastructure.sh --plan-only
-
-# 2. Créer les VMs avec Terraform
-/root/scripts/deploy-infrastructure.sh --terraform-only
-
-# 3. Configurer les VMs avec Ansible
-/root/scripts/deploy-infrastructure.sh --ansible-only
-```
-
-### Scripts individuels
-
-#### Terraform seul
+### Terraform seul
 
 ```bash
 # Plan uniquement
-/root/scripts/deploy-terraform.sh --plan-only
+./deploy-terraform.sh --plan-only
 
-# Créer les VMs
-/root/scripts/deploy-terraform.sh --auto-apply
+# Appliquer automatiquement
+./deploy-terraform.sh --auto-apply
+
+# Valider la configuration
+./deploy-terraform.sh --validate-only
 ```
 
-#### Ansible seul
+### Ansible seul
 
 ```bash
-# Configurer toutes les VMs
-/root/scripts/deploy-ansible.sh
+# Configurer toutes les VMs (inventaire all/)
+./deploy-ansible.sh
 
-# Configurer uniquement les nouvelles VMs
-/root/scripts/deploy-ansible.sh --skip-existing
+# Utiliser un inventaire spécifique
+./deploy-ansible.sh --inventory proxmox
+./deploy-ansible.sh --inventory vmware
+./deploy-ansible.sh --inventory all
 
 # Augmenter le parallélisme
-/root/scripts/deploy-ansible.sh --parallel 5
+./deploy-ansible.sh --parallel 5
+
+# Cibler des groupes spécifiques
+./deploy-ansible.sh --tags "common,security"
 ```
 
 ## Options principales
 
+### deploy-terraform.sh
+
 | Option | Description |
 |--------|-------------|
-| `--skip-existing` | Configure uniquement les nouvelles VMs (détectées par Terraform) |
-| `--terraform-only` | Exécute uniquement la partie Terraform (création VMs) |
-| `--ansible-only` | Exécute uniquement la partie Ansible (configuration VMs) |
 | `--plan-only` | Génère le plan Terraform sans l'appliquer |
-| `--parallel NUM` | Nombre de VMs Ansible en parallèle (défaut: 3, max: 5) |
+| `--auto-apply` | Applique automatiquement sans confirmation |
+| `--validate-only` | Valide uniquement la syntaxe |
+| `--no-refresh` | Désactive le refresh de l'état |
 
-## Cas d'usage courants
+### deploy-ansible.sh
 
-### Ajouter une nouvelle VM
+| Option | Description |
+|--------|-------------|
+| `--inventory <type>` | Choisir l'inventaire : proxmox, vmware, all (défaut: all) |
+| `--parallel <num>` | Nombre de VMs en parallèle (défaut: 3, max: 5) |
+| `--tags <tags>` | Tags Ansible à exécuter |
+| `--skip-tags <tags>` | Tags Ansible à ignorer |
 
-1. Ajouter la ligne dans `config/vms.csv`
-2. Déployer avec mode skip_existing :
+## Fichiers de configuration
+
+### CSV Proxmox (`config/vms-proxmox.csv`)
+
+Colonnes :
+- `name` : Nom de la VM
+- `vmid` : ID unique Proxmox
+- `environment` : prod, preprod, dev
+- `node` : Nœud Proxmox cible
+- `description` : Description
+- `cores`, `memory`, `disk_size` : Ressources
+- `ip`, `gateway`, `mac` : Configuration réseau
+- `tags` : Tags Proxmox (séparés par virgules)
+- `ansible_groups` : Groupes Ansible (séparés par virgules)
+- `playbooks` : Playbooks à exécuter (séparés par virgules)
+- `playbook_vars` : Variables (format: key=value;key2=value2)
+- Variables spécifiques : `db_backup_file`, `documents_backup_file`, `dolibarr_domain`, `git_repo_url`, `git_branch`
+
+### CSV VMware (`config/vms-vmware.csv`)
+
+Colonnes similaires mais avec :
+- `datacenter` : Datacenter VMware
+- `cluster` : Cluster VMware
+- `datastore` : Datastore VMware
+(remplacent la colonne `node`)
+
+## Inventaires Ansible générés
+
+### Structure
+
+```
+ansible/inventory/
+├── proxmox/
+│   └── inventory.ini          # VMs Proxmox uniquement
+├── vmware/
+│   └── inventory.ini          # VMs VMware uniquement
+└── all/
+    └── inventory.ini          # Toutes les VMs avec préfixes
+```
+
+### Groupes dans l'inventaire `all/`
+
+Les groupes sont préfixés par provider :
+- `proxmox_prod`, `proxmox_mysql`, etc.
+- `vmware_prod`, `vmware_appservers`, etc.
+
+Groupes combinés (tous providers) :
+- `all_prod`, `all_mysql`, etc.
+
+## Cas d'usage
+
+### Ajouter une nouvelle VM Proxmox
+
+1. Éditer `config/vms-proxmox.csv`
+2. Ajouter la ligne avec toutes les informations
+3. Déployer :
    ```bash
-   /root/scripts/deploy-infrastructure.sh --skip-existing
+   ./deploy-terraform.sh --plan-only  # Vérifier
+   ./deploy-terraform.sh --auto-apply # Créer
+   ./deploy-ansible.sh --inventory proxmox  # Configurer
    ```
 
-### Mettre à jour une VM existante
+### Ajouter une VM VMware
+
+1. Éditer `config/vms-vmware.csv`
+2. Utiliser les colonnes datacenter/cluster/datastore
+3. Déployer de la même manière
+
+### Reconfigurer une VM existante
 
 ```bash
-# Option 1: Reconfigurer toutes les VMs
-/root/scripts/deploy-ansible.sh
+# Via l'inventaire
+./deploy-ansible.sh --inventory proxmox
 
-# Option 2: Cibler une VM spécifique
+# Ou directement avec Ansible
 cd /root/ansible
-ansible-playbook playbooks/post-installation.yml -l dolibarr-dev01 -i inventory/proxmox/inventory.ini
-
-# Option 3: Exécuter un playbook spécifique
-ansible-playbook playbooks/deploy-dolibarr.yml -l dolibarr-dev01 -i inventory/proxmox/inventory.ini
+ansible-playbook playbooks/post-installation.yml \
+  -l dolibarr-dev01 \
+  -i inventory/proxmox/inventory.ini
 ```
 
-### Vérifier les changements avant déploiement
+### Vérifier les guest agents
 
 ```bash
-# Voir ce que Terraform va faire
-/root/scripts/deploy-terraform.sh --plan-only
+./check-guest-agents.sh
 
-# Voir le plan en détail
+# Sortie :
+# ✅ mysql-prod01 (200): QEMU agent actif
+# ✅ app-prod01 (1001): VMware Tools actif
+# ❌ web-prod01 (1002): Agent non détecté
+```
+
+## Vérifications
+
+### État Terraform
+
+```bash
 cd /root/terraform
-tofu show tfplan
-```
-
-### Destruction de VMs
-
-```bash
-# Lister les VMs
-/root/scripts/destroy-vms.sh --list
-
-# Plan de destruction
-/root/scripts/destroy-vms.sh --plan --vm dolibarr-dev02
-
-# Détruire une VM
-/root/scripts/destroy-vms.sh --vm dolibarr-dev02
-
-# Détruire toutes les VMs
-/root/scripts/destroy-vms.sh --all
-```
-
-## Détection des nouvelles VMs
-
-Quand `--skip-existing` est utilisé :
-
-1. Terraform génère le plan et identifie les ressources à créer
-2. La liste des nouvelles VMs est sauvegardée dans `config/newly-created-vms.txt`
-3. Ansible lit ce fichier et ne configure que ces VMs
-4. Les VMs existantes sont ignorées
-
-## Performance
-
-- **Terraform** : Parallélisme fixe à 10 VMs simultanées
-- **Ansible** : Parallélisme configurable (défaut: 3, max recommandé: 5)
-
-```bash
-# Augmenter le parallélisme Ansible
-/root/scripts/deploy-infrastructure.sh --parallel 5
-```
-
-## Logs et debugging
-
-```bash
-# Voir les logs Terraform en détail
-cd /root/terraform
-tofu plan
-tofu show tfplan
-
-# Voir l'état Terraform
 tofu state list
-tofu state show proxmox_vm_qemu.dolibarr-dev01
+tofu state show proxmox_virtual_environment_vm.proxmox_vms[\"mysql-prod01\"]
+```
 
-# Tester la connectivité Ansible
+### Inventaires générés
+
+```bash
+# Lister les hosts
 cd /root/ansible
-ansible all -m ping -i inventory/proxmox/inventory.ini
+ansible-inventory -i inventory/all/inventory.ini --list
 
-# Mode verbose Ansible
-ansible-playbook playbooks/configure-vms.yml -vvv -i inventory/proxmox/inventory.ini
+# Tester la connectivité
+ansible all -m ping -i inventory/proxmox/inventory.ini
+ansible all -m ping -i inventory/vmware/inventory.ini
+ansible all -m ping -i inventory/all/inventory.ini
 ```
 
-## Fichiers générés
-
-- `config/vms-config.yml` : Configuration YAML générée depuis le CSV
-- `terraform/vms-from-config.tf` : Fichier Terraform généré
-- `terraform/tfplan` : Plan Terraform binaire
-- `config/newly-created-vms.txt` : Liste des VMs nouvellement créées
-
-## Workflow recommandé
-
-### Pour le développement
+### Afficher les VMs par provider
 
 ```bash
-# 1. Modifier config/vms.csv
-# 2. Vérifier le plan
-/root/scripts/deploy-infrastructure.sh --plan-only
+cd /root/terraform
+tofu output infrastructure_summary
 
-# 3. Déployer uniquement les nouvelles VMs
-/root/scripts/deploy-infrastructure.sh --skip-existing
-```
-
-### Pour la production
-
-```bash
-# 1. Modifier config/vms.csv
-# 2. Vérifier le plan
-/root/scripts/deploy-terraform.sh --plan-only
-
-# 3. Appliquer Terraform
-/root/scripts/deploy-terraform.sh --auto-apply
-
-# 4. Vérifier que les VMs sont up
-ansible all -m ping -i inventory/proxmox/inventory.ini
-
-# 5. Configurer avec Ansible
-/root/scripts/deploy-ansible.sh
+# Sortie :
+# Proxmox VMs: 4
+# VMware VMs: 2
+# Total VMs: 6
 ```
 
 ## Troubleshooting
 
-### Terraform bloqué
+### Erreur "CSV parse error"
+
+Les CSV ne supportent pas les commentaires. Supprimer les lignes commençant par `#`.
+
+### Erreur "file not found: cloudinit/vendor-config.yaml"
+
+Vérifier que les chemins dans `vms-proxmox.tf` et `vms-vmware.tf` pointent vers :
+- `cloudinit/vendor-config-proxmox.yaml` pour Proxmox
+- `cloudinit/vendor-config-vmware.yaml` pour VMware
+
+### Terraform ne voit pas les changements CSV
 
 ```bash
 cd /root/terraform
-tofu state list
-tofu state rm proxmox_vm_qemu.vm-problematic  # Si nécessaire
+rm -rf .terraform .terraform.lock.hcl
+tofu init
 ```
 
-### Ansible ne peut pas se connecter
+### Ansible ne trouve pas les hosts
 
+Vérifier que les inventaires sont générés :
 ```bash
-# Vérifier la connectivité
-ansible all -m ping -i inventory/proxmox/inventory.ini
-
-# Vérifier l'inventaire
-ansible-inventory -i inventory/proxmox/inventory.ini --list
-
-# Attendre cloud-init
-sleep 60
+ls -la /root/ansible/inventory/*/inventory.ini
+cat /root/ansible/inventory/all/inventory.ini
 ```
 
-### Fichiers de configuration désynchronisés
+### Guest agent non détecté après création VM
 
+Attendre 2-3 minutes que cloud-init termine :
 ```bash
-# Regénérer la config
-cd /root/config
-python3 csv-to-config.py
+# Proxmox
+ansible proxmox_vms -m shell -a "cloud-init status --wait" \
+  -i /root/ansible/inventory/proxmox/inventory.ini
 
-# Vérifier
-cat vms-config.yml
+# VMware
+ansible vmware_vms -m shell -a "systemctl status vmtoolsd" \
+  -i /root/ansible/inventory/vmware/inventory.ini
 ```
+
+## Documentation complète
+
+Voir la documentation dans `docs/` :
+- `GUIDE-OPERATIONS.md` : Guide opérationnel complet
+- `INVENTAIRES-ANSIBLE.md` : Détails sur les inventaires
+- `SCHEMA-INVENTAIRES.md` : Schéma visuel du système
