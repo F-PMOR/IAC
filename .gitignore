@@ -13,10 +13,10 @@ ansible/playbooks/files/*.zip
 !.env.secrets.example
 
 # Terraform
-terraform/.terraform/
+terraform/.terraform/*
 terraform/.terraform.lock.hcl
 terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
+terraform/terraform.tfstate.*
 terraform/tfplan
-terraform/*.tfvars.backup
+terraform/*.tfvars.*
 terraform/vms-from-config-*.tf

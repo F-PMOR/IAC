@@ -4,33 +4,33 @@
 locals {
   # Charger le CSV VMware et le parser
   vmware_vms_csv_raw = csvdecode(file("../config/vms-vmware.csv"))
-  
+
   # Filtrer les lignes commentées (commençant par #)
   vmware_vms_csv = [
     for vm in local.vmware_vms_csv_raw :
     vm if !startswith(vm.name, "#")
   ]
-  
+
   # Transformer en map pour utilisation avec for_each
   vmware_vms = {
     for vm in local.vmware_vms_csv :
     replace(vm.name, "-", "_") => {
-      vmid        = tonumber(vm.vmid)
-      name        = vm.name
-      description = vm.description
-      datacenter  = vm.datacenter
-      cluster     = vm.cluster
-      datastore   = vm.datastore
-      environment = vm.environment
-      cores       = tonumber(vm.cores)
-      memory      = tonumber(vm.memory)
-      disk_size   = tonumber(vm.disk_size)
-      ip          = vm.ip
-      gateway     = vm.gateway
-      mac         = vm.mac
-      tags        = split(",", vm.tags)
-      groups      = split(",", vm.ansible_groups)
-      playbooks   = vm.playbooks
+      vmid          = tonumber(vm.vmid)
+      name          = vm.name
+      description   = vm.description
+      datacenter    = vm.datacenter
+      cluster       = vm.cluster
+      datastore     = vm.datastore
+      environment   = vm.environment
+      cores         = tonumber(vm.cores)
+      memory        = tonumber(vm.memory)
+      disk_size     = tonumber(vm.disk_size)
+      ip            = vm.ip
+      gateway       = vm.gateway
+      mac           = vm.mac
+      tags          = split(",", vm.tags)
+      groups        = split(",", vm.ansible_groups)
+      playbooks     = vm.playbooks
       playbook_vars = vm.playbook_vars
     }
   }
@@ -59,7 +59,7 @@ resource "local_file" "ansible_inventory_vmware" {
   content = templatefile("${path.module}/templates/inventory.tpl", {
     vms = local.vmware_vms
   })
-  
+
   # Ne créer le fichier que si on a des VMs VMware
   count = length(local.vmware_vms) > 0 ? 1 : 0
 }

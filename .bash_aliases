@@ -82,6 +82,4 @@ alias deploy-vms-fast='orchestrate-fast'
 
 # Gestion des VMs
 alias list-vms='cd /root/terraform && tofu state list | grep vms_csv'
-alias plan-destroy-vm='/root/terraform/destroy-vms.sh --plan'
-alias destroy-vm='/root/terraform/destroy-vms.sh --vm'
-alias destroy-all-vms='/root/terraform/destroy-vms.sh --all'
+

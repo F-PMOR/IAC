@@ -7,7 +7,7 @@ locals {
     local.proxmox_vms,
     local.vmware_vms
   )
-  
+
   # Extraire tous les groupes uniques
   all_groups = distinct(flatten([
     for vm_key, vm in local.all_vms : vm.groups
