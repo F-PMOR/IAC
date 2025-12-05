@@ -6,13 +6,13 @@ Gestion d'infrastructure multi-provider (Proxmox VE, VMware vSphere) avec Terraf
 
 - **Terraform/OpenTofu** : Provisionnement des VMs (création, configuration réseau, disques)
 - **Ansible** : Configuration post-déploiement (packages, services, applications)
-- **CSV par provider** : Source unique de vérité pour chaque infrastructure (lecture directe avec \`csvdecode()\`)
+- **CSV par provider** : Source unique de vérité pour chaque infrastructure (lecture directe avec `csvdecode()`)
 - **Cloud-init** : Installation automatique des guest agents (QEMU pour Proxmox, open-vm-tools pour VMware)
 - **Inventaires auto-générés** : 3 inventaires Ansible créés automatiquement par Terraform
 
 ## 📁 Structure du projet
 
-\`\`\`
+```
 ├── config/
 │   ├── vms-proxmox.csv         # Configuration VMs Proxmox
 │   ├── vms-vmware.csv          # Configuration VMs VMware
@@ -47,59 +47,59 @@ Gestion d'infrastructure multi-provider (Proxmox VE, VMware vSphere) avec Terraf
     ├── GUIDE-OPERATIONS.md     # Guide opérationnel
     ├── INVENTAIRES-ANSIBLE.md  # Documentation inventaires
     └── SCHEMA-INVENTAIRES.md   # Schéma flux génération
-\`\`\`
+```
 
 ## 🚀 Démarrage rapide
 
 ### 1. Prérequis
 
-Créer le fichier \`.env.secrets\` avec vos credentials :
+Créer le fichier `.env.secrets` avec vos credentials :
 
-\`\`\`bash
+```bash
 cp .env.secrets.example .env.secrets
 chmod 600 .env.secrets
 vim .env.secrets
-\`\`\`
+```
 
 Variables requises :
-- \`PROXMOX_VE_ENDPOINT\` : URL de l'API Proxmox (ex: https://pve01.home:8006/)
-- \`PROXMOX_VE_USERNAME\` : Utilisateur Proxmox (ex: root@pam)
-- \`PROXMOX_VE_PASSWORD\` : Mot de passe Proxmox
-- \`VSPHERE_SERVER\` : Serveur vCenter (si VMware)
-- \`VSPHERE_USER\` : Utilisateur vSphere (si VMware)
-- \`VSPHERE_PASSWORD\` : Mot de passe vSphere (si VMware)
+- `PROXMOX_VE_ENDPOINT` : URL de l'API Proxmox (ex: https://pve01.home:8006/)
+- `PROXMOX_VE_USERNAME` : Utilisateur Proxmox (ex: root@pam)
+- `PROXMOX_VE_PASSWORD` : Mot de passe Proxmox
+- `VSPHERE_SERVER` : Serveur vCenter (si VMware)
+- `VSPHERE_USER` : Utilisateur vSphere (si VMware)
+- `VSPHERE_PASSWORD` : Mot de passe vSphere (si VMware)
 
 ### 2. Démarrage du conteneur
 
-\`\`\`bash
+```bash
 # Construire et démarrer
 podman-compose up -d --build
 
 # Se connecter au conteneur
 podman exec -it IAC-TFA /bin/bash
-\`\`\`
+```
 
 ### 3. Configuration des VMs
 
 Éditer les fichiers CSV selon vos besoins :
 
 **VMs Proxmox :**
-\`\`\`bash
+```bash
 vim config/vms-proxmox.csv
-\`\`\`
+```
 
 **VMs VMware :**
-\`\`\`bash
+```bash
 vim config/vms-vmware.csv
-\`\`\`
+```
 
-Voir \`config/README-CSV-PROVIDERS.md\` pour la structure détaillée.
+Voir `config/README-CSV-PROVIDERS.md` pour la structure détaillée.
 
 ### 4. Déploiement
 
 **Dans le conteneur :**
 
-\`\`\`bash
+```bash
 # Vérifier le plan Terraform
 ./deploy-terraform.sh --plan-only
 
@@ -112,12 +112,12 @@ Voir \`config/README-CSV-PROVIDERS.md\` pour la structure détaillée.
 # Ou spécifier un inventaire
 ./deploy-ansible.sh --inventory proxmox
 ./deploy-ansible.sh --inventory vmware
-\`\`\`
+```
 
 **Ou tout en une fois :**
-\`\`\`bash
+```bash
 ./deploy-infrastructure.sh
-\`\`\`
+```
 
 ## 📊 Inventaires Ansible
 
@@ -125,36 +125,36 @@ Terraform génère automatiquement **3 inventaires** lors du déploiement :
 
 | Inventaire | Contenu | Groupes |
 |------------|---------|---------|
-| \`inventory/proxmox/\` | VMs Proxmox uniquement | \`prod\`, \`mysql\`, \`webservers\`, etc. |
-| \`inventory/vmware/\` | VMs VMware uniquement | \`prod\`, \`appservers\`, etc. |
-| \`inventory/all/\` | Toutes les VMs | \`proxmox_prod\`, \`vmware_prod\`, \`all_prod\`, etc. |
+| `inventory/proxmox/` | VMs Proxmox uniquement | `prod`, `mysql`, `webservers`, etc. |
+| `inventory/vmware/` | VMs VMware uniquement | `prod`, `appservers`, etc. |
+| `inventory/all/` | Toutes les VMs | `proxmox_prod`, `vmware_prod`, `all_prod`, etc. |
 
-Voir \`docs/INVENTAIRES-ANSIBLE.md\` pour plus de détails.
+Voir `docs/INVENTAIRES-ANSIBLE.md` pour plus de détails.
 
 ## 🔧 Gestion des VMs
 
 ### Ajouter une nouvelle VM
 
-1. Ajouter une ligne dans \`config/vms-proxmox.csv\` ou \`config/vms-vmware.csv\`
+1. Ajouter une ligne dans `config/vms-proxmox.csv` ou `config/vms-vmware.csv`
 2. Appliquer les changements :
-   \`\`\`bash
+   ```bash
    ./deploy-terraform.sh --auto-apply
    ./deploy-ansible.sh --limit nouvelle-vm
-   \`\`\`
+   ```
 
 ### Importer des VMs existantes
 
-\`\`\`bash
+```bash
 # Importer toutes les VMs Proxmox
 ./import-terraform-vms.sh --all --provider proxmox
 
 # Importer une VM spécifique
 ./import-terraform-vms.sh --vm mysql-prod01 --provider proxmox
-\`\`\`
+```
 
 ### Supprimer une VM
 
-\`\`\`bash
+```bash
 # Lister les VMs
 ./destroy-vms.sh --list
 
@@ -166,7 +166,7 @@ Voir \`docs/INVENTAIRES-ANSIBLE.md\` pour plus de détails.
 
 # Détruire toutes les VMs d'un provider
 ./destroy-vms.sh --all --provider proxmox
-\`\`\`
+```
 
 ## 🔍 Guest Agents
 
@@ -176,59 +176,59 @@ Les guest agents permettent la communication entre l'hyperviseur et les VMs :
 - **VMware** : open-vm-tools (installé automatiquement via cloud-init)
 
 **Vérification :**
-\`\`\`bash
+```bash
 ./check-guest-agents.sh
-\`\`\`
+```
 
-Voir \`ansible/playbooks/README-GUEST-AGENTS.md\` pour plus de détails.
+Voir `ansible/playbooks/README-GUEST-AGENTS.md` pour plus de détails.
 
 ## 🛠️ Scripts disponibles
 
 | Script | Description |
 |--------|-------------|
-| \`deploy-terraform.sh\` | Déploie l'infrastructure (lit directement les CSV) |
-| \`deploy-ansible.sh\` | Configure les VMs avec Ansible |
-| \`deploy-infrastructure.sh\` | Orchestrateur global (Terraform + Ansible) |
-| \`import-terraform-vms.sh\` | Importe des VMs existantes dans le state |
-| \`clean-terraform.sh\` | Nettoie le cache Terraform |
-| \`destroy-vms.sh\` | Détruit une ou plusieurs VMs |
-| \`check-guest-agents.sh\` | Vérifie l'état des guest agents |
+| `deploy-terraform.sh` | Déploie l'infrastructure (lit directement les CSV) |
+| `deploy-ansible.sh` | Configure les VMs avec Ansible |
+| `deploy-infrastructure.sh` | Orchestrateur global (Terraform + Ansible) |
+| `import-terraform-vms.sh` | Importe des VMs existantes dans le state |
+| `clean-terraform.sh` | Nettoie le cache Terraform |
+| `destroy-vms.sh` | Détruit une ou plusieurs VMs |
+| `check-guest-agents.sh` | Vérifie l'état des guest agents |
 
-Voir \`scripts/README.md\` pour la documentation détaillée.
+Voir `scripts/README.md` pour la documentation détaillée.
 
 ## 🐳 Utilisation du conteneur
 
 ### Connexion
 
-\`\`\`bash
+```bash
 podman exec -it IAC-TFA /bin/bash
-\`\`\`
+```
 
 ### Alias disponibles
 
 **Ansible :**
-- \`ap\` → \`ansible-playbook\`
-- \`apc\` → \`ansible-playbook --check\`
-- \`apd\` → \`ansible-playbook --diff\`
-- \`aping\` → \`ansible all -m ping\`
+- `ap` → `ansible-playbook`
+- `apc` → `ansible-playbook --check`
+- `apd` → `ansible-playbook --diff`
+- `aping` → `ansible all -m ping`
 
 **OpenTofu/Terraform :**
-- \`tf\` → \`tofu\`
-- \`tfi\` → \`tofu init\`
-- \`tfp\` → \`tofu plan\`
-- \`tfa\` → \`tofu apply\`
-- \`tfd\` → \`tofu destroy\`
-- \`tfv\` → \`tofu validate\`
+- `tf` → `tofu`
+- `tfi` → `tofu init`
+- `tfp` → `tofu plan`
+- `tfa` → `tofu apply`
+- `tfd` → `tofu destroy`
+- `tfv` → `tofu validate`
 
-Voir \`.bash_aliases\` pour la liste complète.
+Voir `.bash_aliases` pour la liste complète.
 
 ### Volumes montés
 
-- \`./ansible\` → \`/root/ansible\`
-- \`./terraform\` → \`/root/terraform\`
-- \`./config\` → \`/root/config\`
-- \`./scripts\` → \`/root/scripts\`
-- \`./.ssh\` → \`/root/.ssh\`
+- `./ansible` → `/root/ansible`
+- `./terraform` → `/root/terraform`
+- `./config` → `/root/config`
+- `./scripts` → `/root/scripts`
+- `./.ssh` → `/root/.ssh`
 
 ## 📚 Documentation complète
 
@@ -242,7 +242,7 @@ Voir \`.bash_aliases\` pour la liste complète.
 ## �� Fonctionnalités clés
 
 - ✅ **Multi-provider** : Proxmox et VMware dans la même infrastructure
-- ✅ **Lecture directe CSV** : Pas de génération Python/Jinja2, utilisation de \`csvdecode()\`
+- ✅ **Lecture directe CSV** : Pas de génération Python/Jinja2, utilisation de `csvdecode()`
 - ✅ **Inventaires auto-générés** : 3 inventaires créés par Terraform (proxmox/, vmware/, all/)
 - ✅ **Cloud-init** : Configuration automatique des VMs et guest agents
 - ✅ **Import de VMs existantes** : Gestion de VMs déjà créées
@@ -252,10 +252,10 @@ Voir \`.bash_aliases\` pour la liste complète.
 
 ## �� Sécurité
 
-- \`.env.secrets\` ne doit **JAMAIS** être commité (déjà dans \`.gitignore\`)
-- Permissions recommandées : \`chmod 600 .env.secrets\`
+- `.env.secrets` ne doit **JAMAIS** être commité (déjà dans `.gitignore`)
+- Permissions recommandées : `chmod 600 .env.secrets`
 - Les clés SSH sont montées en lecture seule dans le conteneur
-- Option \`prevent_destroy\` disponible dans le code Terraform (production)
+- Option `prevent_destroy` disponible dans le code Terraform (production)
 
 ## 📝 Versions
 
