@@ -40,3 +40,8 @@
   tags:
     - dolibarr
     - web
+
+- name: Restore Dolibarr
+  import_playbook: restore-dolibarr.yml
+  tags:
+    - restore-dolibarr
