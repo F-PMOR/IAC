@@ -1,0 +1,159 @@
+---
+- name: Restore Dolibarr database and documents from backup
+  hosts: dolibarr
+  become: true
+  
+  vars:
+    dolibarr_db_name: "dolibarr"
+    dolibarr_db_user: "dolibarr"
+    dolibarr_db_password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('SecurePassword123!') }}"
+    dolibarr_documents_dir: "/var/www/dolibarr_documents"
+    dolibarr_web_user: "www-data"
+    dolibarr_web_group: "www-data"
+    # Nom du fichier SQL dans le répertoire files/
+    backup_file: "mysqldump_dolibarrdebian_22.0.2_2511291336.sql.gz"
+    # Archive des documents (optionnel)
+    documents_backup_file: "dolibarr_documents_backup.tar.gz"
+    # Répertoire temporaire sur le serveur
+    temp_restore_dir: "/tmp/dolibarr_restore"
+  
+  tasks:
+    - name: Create temporary restore directory
+      ansible.builtin.file:
+        path: "{{ temp_restore_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Copy backup file to target server
+      ansible.builtin.copy:
+        src: "files/{{ backup_file }}"
+        dest: "{{ temp_restore_dir }}/{{ backup_file }}"
+        mode: '0644'
+
+    - name: Check if backup file is compressed
+      ansible.builtin.stat:
+        path: "{{ temp_restore_dir }}/{{ backup_file }}"
+      register: backup_stat
+
+    - name: Drop existing Dolibarr database
+      community.mysql.mysql_db:
+        name: "{{ dolibarr_db_name }}"
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      tags: dangerous
+
+    - name: Create fresh Dolibarr database
+      community.mysql.mysql_db:
+        name: "{{ dolibarr_db_name }}"
+        state: present
+        encoding: utf8mb4
+        collation: utf8mb4_unicode_ci
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Ensure database user has privileges
+      community.mysql.mysql_user:
+        name: "{{ dolibarr_db_user }}"
+        password: "{{ dolibarr_db_password }}"
+        priv: "{{ dolibarr_db_name }}.*:ALL"
+        host: localhost
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Restore database from compressed backup
+      ansible.builtin.shell: |
+        set -e
+        zcat "{{ temp_restore_dir }}/{{ backup_file }}" | mysql --default-character-set=utf8mb4 {{ dolibarr_db_name }} -u {{ dolibarr_db_user }} -p{{ dolibarr_db_password }}
+      when: backup_file.endswith('.gz')
+      args:
+        executable: /bin/bash
+      register: restore_result
+      failed_when: restore_result.rc != 0
+      changed_when: true
+
+    - name: Restore database from uncompressed backup
+      community.mysql.mysql_db:
+        name: "{{ dolibarr_db_name }}"
+        state: import
+        target: "{{ temp_restore_dir }}/{{ backup_file }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      when: not backup_file.endswith('.gz')
+
+    - name: Display database restoration result
+      ansible.builtin.debug:
+        msg: "Database {{ dolibarr_db_name }} has been successfully restored from {{ backup_file }}"
+
+    # ============================================
+    # RESTORATION DES DOCUMENTS
+    # ============================================
+
+    - name: Check if documents backup file exists locally
+      ansible.builtin.stat:
+        path: "files/{{ documents_backup_file }}"
+      delegate_to: localhost
+      register: documents_backup_stat
+      become: false
+
+    - name: Copy documents backup to target server
+      ansible.builtin.copy:
+        src: "files/{{ documents_backup_file }}"
+        dest: "{{ temp_restore_dir }}/{{ documents_backup_file }}"
+        mode: '0644'
+      when: documents_backup_stat.stat.exists
+
+    - name: Backup current documents directory (safety)
+      ansible.builtin.command:
+        cmd: "mv {{ dolibarr_documents_dir }} {{ dolibarr_documents_dir }}.bak.{{ ansible_date_time.epoch }}"
+      when: documents_backup_stat.stat.exists
+      ignore_errors: true
+      changed_when: true
+
+    - name: Create documents directory
+      ansible.builtin.file:
+        path: "{{ dolibarr_documents_dir }}"
+        state: directory
+        owner: "{{ dolibarr_web_user }}"
+        group: "{{ dolibarr_web_group }}"
+        mode: '0755'
+      when: documents_backup_stat.stat.exists
+
+    - name: Extract documents backup
+      ansible.builtin.unarchive:
+        src: "{{ temp_restore_dir }}/{{ documents_backup_file }}"
+        dest: "{{ dolibarr_documents_dir }}"
+        remote_src: yes
+        owner: "{{ dolibarr_web_user }}"
+        group: "{{ dolibarr_web_group }}"
+      when: documents_backup_stat.stat.exists
+
+    - name: Set correct permissions on documents
+      ansible.builtin.file:
+        path: "{{ dolibarr_documents_dir }}"
+        owner: "{{ dolibarr_web_user }}"
+        group: "{{ dolibarr_web_group }}"
+        recurse: yes
+      when: documents_backup_stat.stat.exists
+
+    - name: Clean up documents backup file
+      ansible.builtin.file:
+        path: "{{ temp_restore_dir }}/{{ documents_backup_file }}"
+        state: absent
+      when: documents_backup_stat.stat.exists
+
+    - name: Display documents restoration result
+      ansible.builtin.debug:
+        msg: "Documents have been successfully restored from {{ documents_backup_file }}"
+      when: documents_backup_stat.stat.exists
+
+    - name: Display skip message if no documents backup
+      ansible.builtin.debug:
+        msg: "No documents backup file found ({{ documents_backup_file }}), skipping documents restoration"
+      when: not documents_backup_stat.stat.exists
+
+    # ============================================
+    # CLEANUP
+    # ============================================
+
+    - name: Clean up temporary directory
+      ansible.builtin.file:
+        path: "{{ temp_restore_dir }}"
+        state: absent

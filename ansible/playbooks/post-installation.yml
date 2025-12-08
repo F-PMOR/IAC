@@ -1,0 +1,96 @@
+---
+- name: System update
+  hosts: all
+  become: true
+  
+  tasks:
+    - name: Update apt cache (Debian/Ubuntu)
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+    
+    - name: Check if upgrades are available (Debian/Ubuntu)
+      ansible.builtin.shell: apt list --upgradable 2>/dev/null | grep -v "^Listing" | wc -l
+      register: apt_upgradable
+      when: ansible_os_family == "Debian"
+      changed_when: false
+    
+    - name: Upgrade all packages (Debian/Ubuntu)
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: yes
+        autoclean: yes
+      when: 
+        - ansible_os_family == "Debian"
+        - apt_upgradable.stdout | int > 0
+      register: apt_upgrade
+    
+    - name: Update yum cache (RedHat/CentOS)
+      ansible.builtin.yum:
+        update_cache: yes
+      when: ansible_os_family == "RedHat"
+    
+    - name: Upgrade all packages (RedHat/CentOS)
+      ansible.builtin.yum:
+        name: "*"
+        state: latest
+      when: ansible_os_family == "RedHat"
+      register: yum_upgrade
+      changed_when: yum_upgrade.changed and yum_upgrade.results | length > 0
+    
+    - name: Check if reboot is required (Debian/Ubuntu)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_required
+      when: ansible_os_family == "Debian"
+    
+    - name: Reboot if required
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible after system update"
+        reboot_timeout: 300
+      when: 
+        - ansible_os_family == "Debian"
+        - reboot_required.stat.exists
+    
+    # ============================================
+    # Configuration des alias pour l'utilisateur ansible
+    # ============================================
+    
+    - name: Copy bash aliases for ansible user
+      ansible.builtin.copy:
+        src: files/bash_aliases
+        dest: /home/ansible/.bash_aliases
+        owner: ansible
+        group: ansible
+        mode: '0644'
+    
+    - name: Ensure .bashrc sources .bash_aliases for ansible user
+      ansible.builtin.lineinfile:
+        path: /home/ansible/.bashrc
+        line: '[ -f ~/.bash_aliases ] && . ~/.bash_aliases'
+        create: yes
+        owner: ansible
+        group: ansible
+        mode: '0644'
+    
+    - name: Copy bash aliases for root user
+      ansible.builtin.copy:
+        src: files/bash_aliases
+        dest: /root/.bash_aliases
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Ensure .bashrc sources .bash_aliases for root user
+      ansible.builtin.lineinfile:
+        path: /root/.bashrc
+        line: '[ -f ~/.bash_aliases ] && . ~/.bash_aliases'
+        create: yes
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Display completion message
+      ansible.builtin.debug:
+        msg: "System updated and bash aliases configured for ansible and root users"

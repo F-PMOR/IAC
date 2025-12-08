@@ -1,0 +1,109 @@
+---
+# Dolibarr installation from Git
+
+- name: Check if Dolibarr is already installed
+  ansible.builtin.stat:
+    path: "{{ dolibarr_install_dir }}/.git"
+  register: dolibarr_git_dir
+
+- name: Check if Git safe.directory is already configured
+  ansible.builtin.shell: |
+    git config --global --get safe.directory | grep -q "^{{ dolibarr_install_dir }}$"
+  register: git_safe_configured
+  when: dolibarr_git_dir.stat.exists
+  changed_when: false
+  failed_when: false
+
+- name: Fix Git ownership issue if directory exists
+  ansible.builtin.command:
+    cmd: git config --global --add safe.directory {{ dolibarr_install_dir }}
+  when: 
+    - dolibarr_git_dir.stat.exists
+    - git_safe_configured.rc != 0
+  changed_when: true
+
+- name: Fix directory ownership for Git operations
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}"
+    owner: root
+    group: root
+    state: directory
+  when: dolibarr_git_dir.stat.exists
+
+- name: Clone Dolibarr repository
+  ansible.builtin.git:
+    repo: "{{ git_repo_url | default(dolibarr_git_repo) }}"
+    dest: "{{ dolibarr_install_dir }}"
+    version: "{{ git_branch | default(dolibarr_version | default('22.0.2')) }}"
+    force: no
+  when: not dolibarr_git_dir.stat.exists
+
+- name: Get current Git commit hash
+  ansible.builtin.shell: |
+    cd {{ dolibarr_install_dir }}
+    git rev-parse HEAD 2>/dev/null || echo "none"
+  register: current_git_ref
+  when: dolibarr_git_dir.stat.exists
+  changed_when: false
+
+- name: Update Dolibarr repository
+  ansible.builtin.shell: |
+    cd {{ dolibarr_install_dir }}
+    git fetch --all --tags
+    # Try to checkout branch first, fallback to tag
+    TARGET_REF="{{ git_branch | default(dolibarr_version | default('22.0.2')) }}"
+    if git show-ref --verify --quiet refs/remotes/origin/$TARGET_REF; then
+      # It's a remote branch
+      git checkout -B $TARGET_REF origin/$TARGET_REF
+      git pull --ff-only origin $TARGET_REF
+    else
+      # It's a tag or local ref
+      git checkout $TARGET_REF
+    fi
+    git rev-parse HEAD
+  register: new_git_ref
+  when: dolibarr_git_dir.stat.exists
+  changed_when: new_git_ref.stdout != current_git_ref.stdout
+
+- name: Create documents directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_documents_dir }}"
+    state: directory
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0755'
+
+- name: Set ownership on Dolibarr directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}"
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    state: directory
+  when: not dolibarr_git_dir.stat.exists or new_git_ref is changed
+
+- name: Set ownership recursively on critical directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    recurse: yes
+  loop:
+    - "{{ dolibarr_install_dir }}/htdocs"
+    - "{{ dolibarr_documents_dir }}"
+  when: new_git_ref is changed
+
+- name: Set permissions on htdocs directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}/htdocs"
+    state: directory
+    mode: '0755'
+  when: not dolibarr_git_dir.stat.exists or new_git_ref is changed
+
+- name: Set permissions on conf directory
+  ansible.builtin.file:
+    path: "{{ dolibarr_install_dir }}/htdocs/conf"
+    state: directory
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0755'
+  when: not dolibarr_git_dir.stat.exists or new_git_ref is changed

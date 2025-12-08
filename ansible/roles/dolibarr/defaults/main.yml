@@ -1,0 +1,35 @@
+---
+# Defaults variables for Dolibarr role
+
+# Dolibarr version
+dolibarr_version: "20.0.2"
+dolibarr_git_repo: "https://github.com/Dolibarr/dolibarr.git"
+
+# Installation paths
+dolibarr_install_dir: "/var/www/dolibarr"
+dolibarr_documents_dir: "/var/www/dolibarr_documents"
+
+# Web server
+dolibarr_web_user: "www-data"
+dolibarr_web_group: "www-data"
+dolibarr_domain: "dolibarr.local"
+
+# Database configuration
+dolibarr_db_type: "mysqli"  # mysqli or pgsql
+dolibarr_db_host: "localhost"
+dolibarr_db_port: "3306"
+dolibarr_db_name: "dolibarr"
+dolibarr_db_user: "dolibarr"
+dolibarr_db_password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('changeme') }}"
+dolibarr_db_root_password: "{{ lookup('env', 'MYSQL_ROOT_PASSWORD') | default('root') }}"
+
+# PHP configuration
+dolibarr_php_version: "8.2"
+dolibarr_php_memory_limit: "256M"
+dolibarr_php_max_execution_time: "300"
+dolibarr_php_upload_max_filesize: "50M"
+dolibarr_php_post_max_size: "50M"
+
+# Apache configuration
+dolibarr_apache_port: "80"
+dolibarr_enable_ssl: false

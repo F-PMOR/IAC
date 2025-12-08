@@ -1,0 +1,13 @@
+#cloud-config
+# Configuration cloud-init pour VMs VMware
+# Installe automatiquement open-vm-tools au premier boot
+
+package_update: true
+packages:
+  - open-vm-tools
+
+runcmd:
+  - systemctl enable --now vmtoolsd
+  - systemctl enable --now vgauth
+  - echo "VMware Tools (open-vm-tools) installed and started."
+  - echo "Vendor-specific cloud-init configuration applied for VMware."

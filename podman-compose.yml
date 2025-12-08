@@ -1,0 +1,33 @@
+version: '3'
+# Utilisation
+# podman-compose build && podman-compose up -d
+# ou 
+# podman-compose up -d --build
+# puis 
+# podman exec -it ansible-workspace /bin/bash
+
+services:
+  iac:
+    build:
+      context: .
+      dockerfile: docker-iac/Dockerfile
+    container_name: IAC-TFA
+    env_file:
+      - .env
+      - .env.secrets
+    environment:
+      # La clé SSH peut être passée via cette variable
+      # Utilisation: SSH_PRIVATE_KEY="$(cat ~/.ssh/id_rsa)" podman-compose up -d
+      - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY:-}
+    volumes:
+      # Monte le répertoire courant dans le conteneur
+      - ./ansible:/root/ansible
+      - ./terraform:/root/terraform
+      - ./config:/root/config
+      - ./scripts:/root/scripts
+      # Monte les clés SSH en lecture/écriture pour Terraform
+      - ./.ssh:/root/.ssh
+      - ./ansible.cfg:/root/ansible.cfg
+    working_dir: /root
+    # stdin_open: true
+    tty: true

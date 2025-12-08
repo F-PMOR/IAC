@@ -1,0 +1,25 @@
+---
+# Database configuration
+
+- name: Create Dolibarr database
+  community.mysql.mysql_db:
+    name: "{{ dolibarr_db_name }}"
+    state: present
+    encoding: utf8mb4
+    collation: utf8mb4_unicode_ci
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+  register: db_created
+
+- name: Create Dolibarr database user
+  community.mysql.mysql_user:
+    name: "{{ dolibarr_db_user }}"
+    password: "{{ dolibarr_db_password }}"
+    priv: "{{ dolibarr_db_name }}.*:ALL"
+    host: localhost
+    state: present
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+
+- name: Flush MySQL privileges
+  community.mysql.mysql_query:
+    query: "FLUSH PRIVILEGES"
+    login_unix_socket: /var/run/mysqld/mysqld.sock

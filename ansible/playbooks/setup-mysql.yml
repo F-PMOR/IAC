@@ -1,0 +1,140 @@
+---
+# Playbook de déploiement MySQL/MariaDB
+# Installe et configure un serveur de base de données MySQL/MariaDB
+
+- name: Deploy MySQL/MariaDB Server
+  hosts: databases
+  become: true
+  
+  vars:
+    mysql_root_password: "{{ lookup('env', 'MYSQL_ROOT_PASSWORD') | default('ChangeMe123!') }}"
+    mysql_max_connections: 200
+    mysql_innodb_buffer_pool_size: "2G"
+    mysql_bind_address: "0.0.0.0"
+    mysql_port: 3306
+    
+    # Bases de données à créer
+    mysql_databases:
+      - name: dolibarr
+        encoding: utf8mb4
+        collation: utf8mb4_general_ci
+    
+    # Utilisateurs à créer
+    mysql_users:
+      - name: dolibarr
+        password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('SecurePassword123!') }}"
+        priv: "dolibarr.*:ALL"
+        host: "%"
+  
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+    
+    - name: Install MariaDB server and dependencies
+      ansible.builtin.apt:
+        name:
+          - mariadb-server
+          - mariadb-client
+          - python3-pymysql
+        state: present
+    
+    - name: Ensure MariaDB is started and enabled
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: true
+    
+    - name: Check if root password is already set
+      ansible.builtin.shell: |
+        mysqladmin -u root -p'{{ mysql_root_password }}' ping
+      register: mysql_root_check
+      changed_when: false
+      failed_when: false
+      no_log: true
+    
+    - name: Set MySQL root password (only if not set)
+      community.mysql.mysql_user:
+        name: root
+        password: "{{ mysql_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        check_implicit_admin: true
+        state: present
+      when: mysql_root_check.rc != 0
+      no_log: true
+    
+    - name: Create .my.cnf for root user
+      ansible.builtin.template:
+        src: templates/my.cnf.j2
+        dest: /root/.my.cnf
+        owner: root
+        group: root
+        mode: '0600'
+    
+    - name: Remove anonymous MySQL users
+      community.mysql.mysql_user:
+        name: ''
+        host_all: true
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+    
+    - name: Remove MySQL test database
+      community.mysql.mysql_db:
+        name: test
+        state: absent
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+    
+    - name: Configure MySQL server settings
+      ansible.builtin.template:
+        src: templates/mysqld.cnf.j2
+        dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart MariaDB
+    
+    - name: Create MySQL databases
+      community.mysql.mysql_db:
+        name: "{{ item.name }}"
+        encoding: "{{ item.encoding | default('utf8mb4') }}"
+        collation: "{{ item.collation | default('utf8mb4_general_ci') }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+      loop: "{{ mysql_databases }}"
+      when: mysql_databases is defined
+    
+    - name: Create MySQL users
+      community.mysql.mysql_user:
+        name: "{{ item.name }}"
+        password: "{{ item.password }}"
+        priv: "{{ item.priv }}"
+        host: "{{ item.host | default('localhost') }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        column_case_sensitive: false
+      loop: "{{ mysql_users }}"
+      when: mysql_users is defined
+      no_log: true
+    
+    - name: Configure firewall for MySQL
+      ansible.builtin.ufw:
+        rule: allow
+        port: "{{ mysql_port }}"
+        proto: tcp
+      when: ansible_facts['os_family'] == 'Debian'
+      ignore_errors: true
+    
+    - name: Display connection information
+      ansible.builtin.debug:
+        msg:
+          - "MySQL/MariaDB installation completed successfully!"
+          - "Server: {{ ansible_default_ipv4.address }}:{{ mysql_port }}"
+          - "Root password has been set (check vault)"
+          - "Databases created: {{ mysql_databases | map(attribute='name') | list }}"
+
+  handlers:
+    - name: Restart MariaDB
+      ansible.builtin.systemd:
+        name: mariadb
+        state: restarted

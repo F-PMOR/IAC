@@ -1,0 +1,78 @@
+#cloud-config
+# Configuration cloud-init pour les VMs
+# Ce fichier est utilisé par Terraform pour initialiser les VMs
+
+# Hostname de la machine (défini dynamiquement par Terraform)
+hostname: ${hostname}
+fqdn: ${hostname}.local
+
+# Configuration du clavier en français (azerty)
+keyboard:
+  layout: fr
+  variant: azerty
+
+# Locale française
+locale: fr_FR.UTF-8
+timezone: Europe/Paris
+
+# Configuration supplémentaire du clavier pour la console
+# Exécutée au premier boot
+runcmd:
+  - loadkeys fr
+  - setupcon -k --force
+  - localectl set-keymap fr
+  - localectl set-x11-keymap fr pc105
+  - echo 'KEYMAP=fr' > /etc/vconsole.conf
+  - echo 'XKBLAYOUT=fr' >> /etc/vconsole.conf
+  - echo 'XKBVARIANT=' >> /etc/vconsole.conf
+  - debconf-set-selections <<< 'keyboard-configuration keyboard-configuration/layout select French'
+  - debconf-set-selections <<< 'keyboard-configuration keyboard-configuration/variant select French'
+  - debconf-set-selections <<< 'keyboard-configuration keyboard-configuration/model select Generic 105-key PC'
+  - dpkg-reconfigure -f noninteractive keyboard-configuration
+
+# Packages supplémentaires pour le support du clavier
+packages:
+  - console-setup
+  - console-data
+  - keyboard-configuration
+
+# Configuration des fichiers système
+write_files:
+  - path: /etc/default/keyboard
+    content: |
+      XKBMODEL="pc105"
+      XKBLAYOUT="fr"
+      XKBVARIANT=""
+      XKBOPTIONS=""
+      BACKSPACE="guess"
+    owner: root:root
+    permissions: '0644'
+
+# Désactiver l'authentification SSH par mot de passe
+# Seules les clés SSH seront autorisées sauf via console
+ssh_pwauth: false
+
+# a priori le goupe ansible existe déjà.
+# groups:
+#   - ansible
+users:
+- name: root
+  # Mot de passe passé depuis la variable Terraform (sera hashé par cloud-init)
+  plain_text_passwd: ${root_password}
+  lock_passwd: false
+  ssh_authorized_keys:
+  - ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBAQ6LRUfs3P2Tl+GRuUidOtnXCWDlJqmxlag3rl9ThT+XTIxdN+/rmI/arBpcnzXoFoFGKi4JTq5HUpmGJzFyoA= ssh key for IAC Proxmox PMORRY
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3PGdQz/XFj3s5FzV9HZmQ51qmYGmIhq9tiHmwSmSlo philippe.morry@orange.com zxdd7525
+
+- name: ansible
+  gecos: Ansible IAC user for automation
+  ssh_authorized_keys:
+  - ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBAQ6LRUfs3P2Tl+GRuUidOtnXCWDlJqmxlag3rl9ThT+XTIxdN+/rmI/arBpcnzXoFoFGKi4JTq5HUpmGJzFyoA= ssh key for IAC Proxmox PMORRY
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIN3PGdQz/XFj3s5FzV9HZmQ51qmYGmIhq9tiHmwSmSlo philippe.morry@orange.com zxdd7525
+  # Mot de passe passé depuis la variable Terraform (sera hashé par cloud-init)
+  plain_text_passwd: ${ansible_password}
+  lock_passwd: false
+  sudo: ['ALL=(ALL) NOPASSWD:ALL']
+  shell: /bin/bash
+  groups: sudo
+  homedir: /home/ansible

@@ -1,0 +1,1 @@
+name,vmid,environment,datacenter,cluster,datastore,description,cores,memory,disk_size,ip,gateway,mac,tags,ansible_groups,playbooks,playbook_vars

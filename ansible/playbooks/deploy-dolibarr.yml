@@ -1,0 +1,19 @@
+---
+- name: Deploy Dolibarr ERP/CRM
+  hosts: dolibarr
+  become: true
+  
+  vars:
+    # Variables par défaut (seront écrasées par les variables du CSV si elles existent)
+    # Note: Ne pas redéfinir les variables avec des références circulaires
+    # Les valeurs viennent du CSV via l'inventaire ou des defaults du rôle
+    dolibarr_db_password: "{{ lookup('env', 'DOLIBARR_DB_PASSWORD') | default('SecurePassword123!') }}"
+  
+  roles:
+    - role: ../roles/dolibarr
+
+# Supprimer et recréer la base de données proprement
+# sudo mysql -e "DROP DATABASE IF EXISTS dolibarr;"
+# sudo mysql -e "CREATE DATABASE dolibarr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# sudo mysql -e "GRANT ALL PRIVILEGES ON dolibarr.* TO 'dolibarr'@'localhost';"
+# sudo mysql -e "FLUSH PRIVILEGES;"

@@ -1,0 +1,27 @@
+# Ignorer les fichiers de backup dans le répertoire files/
+ansible/playbooks/files/*.sql
+ansible/playbooks/files/*.sql.gz
+ansible/playbooks/files/*.sql.bz2
+ansible/playbooks/files/*.tar.gz
+ansible/playbooks/files/*.tar.bz2
+ansible/playbooks/files/*.zip
+
+# Secrets et variables d'environnement sensibles
+.env.secrets
+.env.local
+**/*secrets*
+!.env.secrets.example
+
+# Terraform
+terraform/.terraform/*
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.*
+terraform/tfplan
+terraform/*.tfvars.*
+terraform/vms-from-config-*.tf
+
+# ssh
+.ssh/id_ecdsa
+.ssh/id_ecdsa.pub
+.ssh/known_hosts

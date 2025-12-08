@@ -1,0 +1,41 @@
+<VirtualHost *:{{ dolibarr_apache_port }}>
+    ServerName {{ dolibarr_domain }}
+    ServerAdmin webmaster@{{ dolibarr_domain }}
+    
+    DocumentRoot {{ dolibarr_install_dir }}/htdocs
+    
+    <Directory {{ dolibarr_install_dir }}/htdocs>
+        Options -Indexes +FollowSymLinks +MultiViews
+        AllowOverride All
+        Require all granted
+        
+        # Dolibarr configuration
+        php_flag display_errors off
+        php_value max_execution_time {{ dolibarr_php_max_execution_time }}
+        php_value memory_limit {{ dolibarr_php_memory_limit }}
+        php_value upload_max_filesize {{ dolibarr_php_upload_max_filesize }}
+        php_value post_max_size {{ dolibarr_php_post_max_size }}
+    </Directory>
+    
+    # Deny access to sensitive directories
+    <Directory {{ dolibarr_install_dir }}/htdocs/conf>
+        Require all denied
+    </Directory>
+    
+    # Allow install directory during initial setup
+    # TODO: Block this after installation is complete
+    <Directory {{ dolibarr_install_dir }}/htdocs/install>
+        Require all granted
+    </Directory>
+    
+    # Logs
+    ErrorLog ${APACHE_LOG_DIR}/dolibarr_error.log
+    CustomLog ${APACHE_LOG_DIR}/dolibarr_access.log combined
+    
+{% if dolibarr_enable_ssl %}
+    # SSL Configuration
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/ssl-cert-snakeoil.pem
+    SSLCertificateKeyFile /etc/ssl/private/ssl-cert-snakeoil.key
+{% endif %}
+</VirtualHost>

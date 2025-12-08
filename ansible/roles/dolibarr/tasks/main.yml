@@ -1,0 +1,17 @@
+---
+# Main tasks for Dolibarr installation
+
+- name: Include prerequisites tasks
+  ansible.builtin.include_tasks: prerequisites.yml
+
+- name: Include database tasks
+  ansible.builtin.include_tasks: database.yml
+
+- name: Include installation tasks
+  ansible.builtin.include_tasks: install.yml
+
+- name: Include configuration tasks
+  ansible.builtin.include_tasks: configure.yml
+
+- name: Include Apache configuration tasks
+  ansible.builtin.include_tasks: apache.yml

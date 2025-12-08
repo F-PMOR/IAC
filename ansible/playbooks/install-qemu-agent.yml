@@ -1,0 +1,33 @@
+---
+- name: Install and enable QEMU Guest Agent
+  hosts: all
+  become: true
+  tasks:
+    - name: Install qemu-guest-agent package (Debian/Ubuntu)
+      apt:
+        name: qemu-guest-agent
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install qemu-guest-agent package (RedHat/CentOS)
+      yum:
+        name: qemu-guest-agent
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Enable and start qemu-guest-agent service
+      systemd:
+        name: qemu-guest-agent
+        enabled: yes
+        state: started
+
+    - name: Verify qemu-guest-agent is running
+      systemd:
+        name: qemu-guest-agent
+        state: started
+      register: qemu_agent_status
+
+    - name: Display qemu-guest-agent status
+      debug:
+        msg: "QEMU Guest Agent is {{ qemu_agent_status.status.ActiveState }}"

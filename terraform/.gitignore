@@ -1,0 +1,45 @@
+# ========================================
+# Terraform .gitignore
+# ========================================
+
+# Fichiers d'état Terraform (contiennent des données sensibles)
+*.tfstate
+*.tfstate.*
+
+# Fichiers de backup
+*.backup
+
+# Lock files temporaires
+.terraform.tfstate.lock.info
+
+# Fichiers de plan binaires
+*.tfplan
+tfplan
+
+# Répertoire des providers téléchargés
+.terraform/
+.terraform.lock.hcl
+
+# Logs de crash
+crash.log
+crash.*.log
+
+# Variables sensibles (dé-commenter si vous ne voulez pas versionner les mots de passe)
+# terraform.tfvars
+# *.auto.tfvars
+
+# Fichiers spécifiques à l'éditeur
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Fichiers macOS
+.DS_Store
+
+# Dossier des configurations désactivées (optionnel)
+disabled/
+
+# README généré (optionnel)
+README-existing-vms.md

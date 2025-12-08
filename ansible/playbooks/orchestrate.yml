@@ -1,0 +1,47 @@
+---
+# Playbook orchestrateur qui applique les configurations selon les groupes
+# Usage:
+#   ansible-playbook orchestrate.yml                            # Toutes les VMs
+#   ansible-playbook orchestrate.yml --limit prod               # Seulement prod
+#   ansible-playbook orchestrate.yml --limit mysql-prod01       # Une VM spécifique
+#   ansible-playbook orchestrate.yml --tags mysql               # Seulement les playbooks MySQL
+#   ansible-playbook orchestrate.yml --tags dolibarr            # Seulement Dolibarr
+#   ansible-playbook orchestrate.yml --skip-tags post-install   # Sauter post-install
+
+
+- name: Post-installation sur toutes les VMs
+  import_playbook: post-installation.yml
+  tags:
+    - always
+    - post-install
+
+- name: Installation QEMU Guest Agent (Proxmox)
+  import_playbook: install-qemu-agent.yml
+  tags:
+    - qemu-agent
+    - agent
+    - proxmox
+
+- name: Installation VMware Tools (VMware/vSphere)
+  import_playbook: install-vmware-tools.yml
+  tags:
+    - vmware-tools
+    - agent
+    - vmware
+
+- name: Configuration MySQL/MariaDB
+  import_playbook: setup-mysql.yml
+  tags:
+    - mysql
+    - databases
+
+- name: Déploiement Dolibarr
+  import_playbook: deploy-dolibarr.yml
+  tags:
+    - dolibarr
+    - web
+
+- name: Restore Dolibarr
+  import_playbook: restore-dolibarr-db.yml
+  tags:
+    - restore-dolibarr-db

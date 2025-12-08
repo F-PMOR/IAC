@@ -1,0 +1,77 @@
+---
+# Playbook pour installer VMware Tools (open-vm-tools) sur les VMs VMware
+# Équivalent du qemu-guest-agent pour Proxmox
+#
+# Usage:
+#   ansible-playbook install-vmware-tools.yml
+#   ansible-playbook install-vmware-tools.yml --limit vmware
+#
+# Open-vm-tools est la version open-source des VMware Tools, recommandée
+# par VMware depuis vSphere 6.5+. Elle fournit:
+# - Communication guest/host pour le provider Terraform
+# - Informations réseau (IP, MAC, interfaces)
+# - Synchronisation de l'heure
+# - Scripts de shutdown/suspend propres
+# - Drivers optimisés
+
+- name: Installation VMware Tools (open-vm-tools)
+  hosts: all
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Installation open-vm-tools sur Debian/Ubuntu
+      apt:
+        name: open-vm-tools
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Installation open-vm-tools sur RedHat/CentOS
+      yum:
+        name: open-vm-tools
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Activer le service vmtoolsd au démarrage
+      systemd:
+        name: vmtoolsd
+        enabled: yes
+        state: started
+      ignore_errors: yes  # Le service peut avoir un nom différent selon la distro
+
+    - name: Activer le service vgauthd (authentification guest) au démarrage
+      systemd:
+        name: vgauth
+        enabled: yes
+        state: started
+      ignore_errors: yes
+
+    - name: Vérifier le statut des VMware Tools
+      command: vmware-toolbox-cmd -v
+      register: vmtools_version
+      changed_when: false
+      failed_when: false
+
+    - name: Afficher la version des VMware Tools
+      debug:
+        msg: "VMware Tools version: {{ vmtools_version.stdout }}"
+      when: vmtools_version.rc == 0
+
+    - name: Avertissement si les tools ne sont pas détectés
+      debug:
+        msg: "ATTENTION: VMware Tools ne semblent pas fonctionner correctement"
+      when: vmtools_version.rc != 0
+
+    - name: Récupérer les informations réseau via VMware Tools
+      command: vmware-toolbox-cmd stat raw text session
+      register: vmtools_info
+      changed_when: false
+      failed_when: false
+
+    - name: Note sur le redémarrage
+      debug:
+        msg: |
+          NOTE: Pour une activation complète des VMware Tools, un redémarrage
+          de la VM est recommandé si c'était la première installation.
+          Cela permet de charger les drivers optimisés.

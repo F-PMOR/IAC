@@ -1,0 +1,47 @@
+---
+# Dolibarr configuration
+
+- name: Check if conf.php exists
+  ansible.builtin.stat:
+    path: "{{ dolibarr_install_dir }}/htdocs/conf/conf.php"
+  register: conf_php
+
+- name: Create conf.php from template
+  ansible.builtin.template:
+    src: conf.php.j2
+    dest: "{{ dolibarr_install_dir }}/htdocs/conf/conf.php"
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0644'
+  when: not conf_php.stat.exists
+
+- name: Configure PHP settings
+  ansible.builtin.lineinfile:
+    path: "/etc/php/{{ dolibarr_php_version }}/apache2/php.ini"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop:
+    - { regexp: '^memory_limit', line: "memory_limit = {{ dolibarr_php_memory_limit }}" }
+    - { regexp: '^max_execution_time', line: "max_execution_time = {{ dolibarr_php_max_execution_time }}" }
+    - { regexp: '^upload_max_filesize', line: "upload_max_filesize = {{ dolibarr_php_upload_max_filesize }}" }
+    - { regexp: '^post_max_size', line: "post_max_size = {{ dolibarr_php_post_max_size }}" }
+  notify: Restart Apache
+
+- name: Check if install.lock exists
+  ansible.builtin.stat:
+    path: "{{ dolibarr_documents_dir }}/install.lock"
+  register: install_lock
+
+- name: Create install.lock file (skip web installer)
+  ansible.builtin.file:
+    path: "{{ dolibarr_documents_dir }}/install.lock"
+    state: touch
+    owner: "{{ dolibarr_web_user }}"
+    group: "{{ dolibarr_web_group }}"
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+  when: 
+    - conf_php.stat.exists
+    - not install_lock.stat.exists
