@@ -1,2 +1,0 @@
-name,vmid,environment,datacenter,cluster,datastore,description,cores,memory,disk_size,ip,gateway,mac,tags,ansible_groups,playbooks,playbook_vars
-test,100,preprod,,,,,2,2048,40,,,,"ubuntu, preprod, test",,post-isntallation.yml
